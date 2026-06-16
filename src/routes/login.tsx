@@ -27,7 +27,10 @@ function LoginPage() {
   };
 
   const handleOAuth = (provider: "Google" | "GitHub") => {
-    setUser({ name: `${provider} User`, email: `user@${provider.toLowerCase()}.com` });
+    const email = window.prompt(`Sign in with ${provider}\n\nEnter your ${provider} email:`);
+    if (!email) return;
+    const name = window.prompt("Your name:", email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())) || email;
+    setUser({ name, email });
     navigate({ to: "/app" });
   };
 
