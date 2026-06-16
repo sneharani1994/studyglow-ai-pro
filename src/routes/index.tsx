@@ -211,13 +211,15 @@ function Features() {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.04 }}
             >
-              <Card className="p-6 h-full glass hover:shadow-glow transition-all hover:-translate-y-1">
-                <div className="h-11 w-11 rounded-xl gradient-primary-bg grid place-items-center text-white mb-4">
-                  <f.icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-semibold text-lg">{f.title}</h3>
-                <p className="text-sm text-muted-foreground mt-1.5">{f.desc}</p>
-              </Card>
+              <Link to={f.to} className="block h-full">
+                <Card className="p-6 h-full glass hover:shadow-glow transition-all hover:-translate-y-1 cursor-pointer">
+                  <div className="h-11 w-11 rounded-xl gradient-primary-bg grid place-items-center text-white mb-4">
+                    <f.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold text-lg">{f.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1.5">{f.desc}</p>
+                </Card>
+              </Link>
             </motion.div>
           ))}
         </div>
