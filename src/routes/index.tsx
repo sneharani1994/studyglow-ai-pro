@@ -56,8 +56,6 @@ function Index() {
       <Hero />
       <Features />
       <HowItWorks />
-      <Testimonials />
-      <Pricing />
       <FAQ />
       <Footer />
     </div>
@@ -68,7 +66,6 @@ function Nav() {
   const links = [
     { label: "Features", href: "#features" },
     { label: "AI Tools", href: "#tools" },
-    { label: "Pricing", href: "#pricing" },
     { label: "About", href: "#about" },
     { label: "Contact", href: "#contact" },
   ];
