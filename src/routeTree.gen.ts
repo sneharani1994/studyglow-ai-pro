@@ -9,38 +9,426 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AppWeakTopicsRouteImport } from './routes/app.weak-topics'
+import { Route as AppVoiceRouteImport } from './routes/app.voice'
+import { Route as AppTutorRouteImport } from './routes/app.tutor'
+import { Route as AppSummariesRouteImport } from './routes/app.summaries'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppRevisionRouteImport } from './routes/app.revision'
+import { Route as AppQuizzesRouteImport } from './routes/app.quizzes'
+import { Route as AppPredictorRouteImport } from './routes/app.predictor'
+import { Route as AppPlannerRouteImport } from './routes/app.planner'
+import { Route as AppMoodRouteImport } from './routes/app.mood'
+import { Route as AppLanguagesRouteImport } from './routes/app.languages'
+import { Route as AppInterviewRouteImport } from './routes/app.interview'
+import { Route as AppHandwrittenRouteImport } from './routes/app.handwritten'
+import { Route as AppFlashcardsRouteImport } from './routes/app.flashcards'
+import { Route as AppDocumentsRouteImport } from './routes/app.documents'
+import { Route as AppConceptMapsRouteImport } from './routes/app.concept-maps'
+import { Route as AppChatRouteImport } from './routes/app.chat'
+import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminDocumentsRouteImport } from './routes/admin.documents'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AppWeakTopicsRoute = AppWeakTopicsRouteImport.update({
+  id: '/weak-topics',
+  path: '/weak-topics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoiceRoute = AppVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTutorRoute = AppTutorRouteImport.update({
+  id: '/tutor',
+  path: '/tutor',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSummariesRoute = AppSummariesRouteImport.update({
+  id: '/summaries',
+  path: '/summaries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRevisionRoute = AppRevisionRouteImport.update({
+  id: '/revision',
+  path: '/revision',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuizzesRoute = AppQuizzesRouteImport.update({
+  id: '/quizzes',
+  path: '/quizzes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPredictorRoute = AppPredictorRouteImport.update({
+  id: '/predictor',
+  path: '/predictor',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlannerRoute = AppPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMoodRoute = AppMoodRouteImport.update({
+  id: '/mood',
+  path: '/mood',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLanguagesRoute = AppLanguagesRouteImport.update({
+  id: '/languages',
+  path: '/languages',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInterviewRoute = AppInterviewRouteImport.update({
+  id: '/interview',
+  path: '/interview',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHandwrittenRoute = AppHandwrittenRouteImport.update({
+  id: '/handwritten',
+  path: '/handwritten',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFlashcardsRoute = AppFlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConceptMapsRoute = AppConceptMapsRouteImport.update({
+  id: '/concept-maps',
+  path: '/concept-maps',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDocumentsRoute = AdminDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/chat': typeof AppChatRoute
+  '/app/concept-maps': typeof AppConceptMapsRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/flashcards': typeof AppFlashcardsRoute
+  '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/interview': typeof AppInterviewRoute
+  '/app/languages': typeof AppLanguagesRoute
+  '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
+  '/app/predictor': typeof AppPredictorRoute
+  '/app/quizzes': typeof AppQuizzesRoute
+  '/app/revision': typeof AppRevisionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/summaries': typeof AppSummariesRoute
+  '/app/tutor': typeof AppTutorRoute
+  '/app/voice': typeof AppVoiceRoute
+  '/app/weak-topics': typeof AppWeakTopicsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/chat': typeof AppChatRoute
+  '/app/concept-maps': typeof AppConceptMapsRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/flashcards': typeof AppFlashcardsRoute
+  '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/interview': typeof AppInterviewRoute
+  '/app/languages': typeof AppLanguagesRoute
+  '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
+  '/app/predictor': typeof AppPredictorRoute
+  '/app/quizzes': typeof AppQuizzesRoute
+  '/app/revision': typeof AppRevisionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/summaries': typeof AppSummariesRoute
+  '/app/tutor': typeof AppTutorRoute
+  '/app/voice': typeof AppVoiceRoute
+  '/app/weak-topics': typeof AppWeakTopicsRoute
+  '/admin': typeof AdminIndexRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/chat': typeof AppChatRoute
+  '/app/concept-maps': typeof AppConceptMapsRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/flashcards': typeof AppFlashcardsRoute
+  '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/interview': typeof AppInterviewRoute
+  '/app/languages': typeof AppLanguagesRoute
+  '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
+  '/app/predictor': typeof AppPredictorRoute
+  '/app/quizzes': typeof AppQuizzesRoute
+  '/app/revision': typeof AppRevisionRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/summaries': typeof AppSummariesRoute
+  '/app/tutor': typeof AppTutorRoute
+  '/app/voice': typeof AppVoiceRoute
+  '/app/weak-topics': typeof AppWeakTopicsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/admin/analytics'
+    | '/admin/documents'
+    | '/admin/reports'
+    | '/admin/users'
+    | '/app/analytics'
+    | '/app/chat'
+    | '/app/concept-maps'
+    | '/app/documents'
+    | '/app/flashcards'
+    | '/app/handwritten'
+    | '/app/interview'
+    | '/app/languages'
+    | '/app/mood'
+    | '/app/planner'
+    | '/app/predictor'
+    | '/app/quizzes'
+    | '/app/revision'
+    | '/app/settings'
+    | '/app/summaries'
+    | '/app/tutor'
+    | '/app/voice'
+    | '/app/weak-topics'
+    | '/admin/'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/admin/analytics'
+    | '/admin/documents'
+    | '/admin/reports'
+    | '/admin/users'
+    | '/app/analytics'
+    | '/app/chat'
+    | '/app/concept-maps'
+    | '/app/documents'
+    | '/app/flashcards'
+    | '/app/handwritten'
+    | '/app/interview'
+    | '/app/languages'
+    | '/app/mood'
+    | '/app/planner'
+    | '/app/predictor'
+    | '/app/quizzes'
+    | '/app/revision'
+    | '/app/settings'
+    | '/app/summaries'
+    | '/app/tutor'
+    | '/app/voice'
+    | '/app/weak-topics'
+    | '/admin'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/admin/analytics'
+    | '/admin/documents'
+    | '/admin/reports'
+    | '/admin/users'
+    | '/app/analytics'
+    | '/app/chat'
+    | '/app/concept-maps'
+    | '/app/documents'
+    | '/app/flashcards'
+    | '/app/handwritten'
+    | '/app/interview'
+    | '/app/languages'
+    | '/app/mood'
+    | '/app/planner'
+    | '/app/predictor'
+    | '/app/quizzes'
+    | '/app/revision'
+    | '/app/settings'
+    | '/app/summaries'
+    | '/app/tutor'
+    | '/app/voice'
+    | '/app/weak-topics'
+    | '/admin/'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +436,249 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/app/weak-topics': {
+      id: '/app/weak-topics'
+      path: '/weak-topics'
+      fullPath: '/app/weak-topics'
+      preLoaderRoute: typeof AppWeakTopicsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/voice': {
+      id: '/app/voice'
+      path: '/voice'
+      fullPath: '/app/voice'
+      preLoaderRoute: typeof AppVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tutor': {
+      id: '/app/tutor'
+      path: '/tutor'
+      fullPath: '/app/tutor'
+      preLoaderRoute: typeof AppTutorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/summaries': {
+      id: '/app/summaries'
+      path: '/summaries'
+      fullPath: '/app/summaries'
+      preLoaderRoute: typeof AppSummariesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/revision': {
+      id: '/app/revision'
+      path: '/revision'
+      fullPath: '/app/revision'
+      preLoaderRoute: typeof AppRevisionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/quizzes': {
+      id: '/app/quizzes'
+      path: '/quizzes'
+      fullPath: '/app/quizzes'
+      preLoaderRoute: typeof AppQuizzesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/predictor': {
+      id: '/app/predictor'
+      path: '/predictor'
+      fullPath: '/app/predictor'
+      preLoaderRoute: typeof AppPredictorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/planner': {
+      id: '/app/planner'
+      path: '/planner'
+      fullPath: '/app/planner'
+      preLoaderRoute: typeof AppPlannerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/mood': {
+      id: '/app/mood'
+      path: '/mood'
+      fullPath: '/app/mood'
+      preLoaderRoute: typeof AppMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/languages': {
+      id: '/app/languages'
+      path: '/languages'
+      fullPath: '/app/languages'
+      preLoaderRoute: typeof AppLanguagesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/interview': {
+      id: '/app/interview'
+      path: '/interview'
+      fullPath: '/app/interview'
+      preLoaderRoute: typeof AppInterviewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/handwritten': {
+      id: '/app/handwritten'
+      path: '/handwritten'
+      fullPath: '/app/handwritten'
+      preLoaderRoute: typeof AppHandwrittenRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/flashcards': {
+      id: '/app/flashcards'
+      path: '/flashcards'
+      fullPath: '/app/flashcards'
+      preLoaderRoute: typeof AppFlashcardsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/documents': {
+      id: '/app/documents'
+      path: '/documents'
+      fullPath: '/app/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/concept-maps': {
+      id: '/app/concept-maps'
+      path: '/concept-maps'
+      fullPath: '/app/concept-maps'
+      preLoaderRoute: typeof AppConceptMapsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/chat': {
+      id: '/app/chat'
+      path: '/chat'
+      fullPath: '/app/chat'
+      preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/documents': {
+      id: '/admin/documents'
+      path: '/documents'
+      fullPath: '/admin/documents'
+      preLoaderRoute: typeof AdminDocumentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminDocumentsRoute: typeof AdminDocumentsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminDocumentsRoute: AdminDocumentsRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface AppRouteChildren {
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppChatRoute: typeof AppChatRoute
+  AppConceptMapsRoute: typeof AppConceptMapsRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
+  AppFlashcardsRoute: typeof AppFlashcardsRoute
+  AppHandwrittenRoute: typeof AppHandwrittenRoute
+  AppInterviewRoute: typeof AppInterviewRoute
+  AppLanguagesRoute: typeof AppLanguagesRoute
+  AppMoodRoute: typeof AppMoodRoute
+  AppPlannerRoute: typeof AppPlannerRoute
+  AppPredictorRoute: typeof AppPredictorRoute
+  AppQuizzesRoute: typeof AppQuizzesRoute
+  AppRevisionRoute: typeof AppRevisionRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppSummariesRoute: typeof AppSummariesRoute
+  AppTutorRoute: typeof AppTutorRoute
+  AppVoiceRoute: typeof AppVoiceRoute
+  AppWeakTopicsRoute: typeof AppWeakTopicsRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAnalyticsRoute: AppAnalyticsRoute,
+  AppChatRoute: AppChatRoute,
+  AppConceptMapsRoute: AppConceptMapsRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
+  AppFlashcardsRoute: AppFlashcardsRoute,
+  AppHandwrittenRoute: AppHandwrittenRoute,
+  AppInterviewRoute: AppInterviewRoute,
+  AppLanguagesRoute: AppLanguagesRoute,
+  AppMoodRoute: AppMoodRoute,
+  AppPlannerRoute: AppPlannerRoute,
+  AppPredictorRoute: AppPredictorRoute,
+  AppQuizzesRoute: AppQuizzesRoute,
+  AppRevisionRoute: AppRevisionRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppSummariesRoute: AppSummariesRoute,
+  AppTutorRoute: AppTutorRoute,
+  AppVoiceRoute: AppVoiceRoute,
+  AppWeakTopicsRoute: AppWeakTopicsRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
