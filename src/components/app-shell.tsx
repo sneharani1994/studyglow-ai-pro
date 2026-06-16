@@ -44,13 +44,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const user = useUser();
   const navigate = useNavigate();
+  const [hydrated, setHydrated] = useState(false);
 
+  useEffect(() => { setHydrated(true); }, []);
   useEffect(() => {
-    if (typeof window !== "undefined" && !user) {
-      // not logged in — redirect to login
-      navigate({ to: "/login" });
-    }
-  }, [user, navigate]);
+    if (hydrated && !user) navigate({ to: "/login" });
+  }, [hydrated, user, navigate]);
 
   return (
     <div className="min-h-screen flex bg-background">

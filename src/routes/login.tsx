@@ -26,6 +26,11 @@ function LoginPage() {
     navigate({ to: "/app" });
   };
 
+  const handleOAuth = (provider: "Google" | "GitHub") => {
+    setUser({ name: `${provider} User`, email: `user@${provider.toLowerCase()}.com` });
+    navigate({ to: "/app" });
+  };
+
   return (
     <AuthLayout
       title="Welcome back"
@@ -54,8 +59,8 @@ function LoginPage() {
           <Separator className="flex-1" /><span className="text-xs text-muted-foreground">OR</span><Separator className="flex-1" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" type="button">Google</Button>
-          <Button variant="outline" type="button">GitHub</Button>
+          <Button variant="outline" type="button" onClick={() => handleOAuth("Google")}>Google</Button>
+          <Button variant="outline" type="button" onClick={() => handleOAuth("GitHub")}>GitHub</Button>
         </div>
       </form>
     </AuthLayout>

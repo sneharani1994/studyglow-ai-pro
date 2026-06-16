@@ -17,7 +17,7 @@ export function clearUser() {
   window.dispatchEvent(new Event(EVT));
 }
 export function useUser(): User | null {
-  const [u, setU] = useState<User | null>(null);
+  const [u, setU] = useState<User | null>(() => getUser());
   useEffect(() => {
     setU(getUser());
     const h = () => setU(getUser());
