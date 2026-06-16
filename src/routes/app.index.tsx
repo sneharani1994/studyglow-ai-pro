@@ -7,6 +7,7 @@ import {
   FileText, MessageSquare, Clock, BrainCircuit, Flame, Sparkles, ArrowRight, CheckCircle2, Circle,
 } from "lucide-react";
 import { stats, recentActivity, upcomingExams, todaysPlan, weakTopics, aiRecommendations } from "@/lib/mock-data";
+import { useUser } from "@/lib/auth";
 
 const ICONS: Record<string, typeof FileText> = {
   FileText, MessageSquare, Clock, BrainCircuit, Flame, Sparkles,
@@ -17,10 +18,12 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Dashboard() {
+  const user = useUser();
+  const firstName = (user?.name ?? "there").split(" ")[0];
   return (
     <div>
       <PageHeader
-        title="Welcome back, Aisha 👋"
+        title={`Welcome back, ${firstName} 👋`}
         description="Here's what's on your plate today."
         action={
           <Button className="gradient-primary-bg text-white border-0 hover:opacity-90">
