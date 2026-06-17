@@ -66,7 +66,7 @@ function Index() {
 }
 
 function Nav() {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const links = [
     { label: "Features", href: "#features" },
     { label: "AI Tools", href: "#tools" },
