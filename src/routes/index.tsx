@@ -259,7 +259,7 @@ function Features() {
 
 function HowItWorks() {
   return (
-    <section className="py-24 border-t gradient-soft-bg">
+    <section id="how-it-works" className="py-24 border-t gradient-soft-bg">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="text-center mb-14">
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight">How it works</h2>
