@@ -411,9 +411,9 @@ function Footer() {
         <div>
           <div className="font-semibold text-sm mb-3">Company</div>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><a href="#contact" className="hover:text-foreground transition-colors">Contact</a></li>
-            <li><span className="opacity-50">Blog</span></li>
-            <li><span className="opacity-50">Careers</span></li>
+            <li><Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
+            <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
+            <li><Link to="/careers" className="hover:text-foreground transition-colors">Careers</Link></li>
           </ul>
         </div>
       </div>
