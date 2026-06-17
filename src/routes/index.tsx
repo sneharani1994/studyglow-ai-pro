@@ -403,13 +403,17 @@ function Footer() {
         <div>
           <div className="font-semibold text-sm mb-3">Product</div>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Features</li><li>Pricing</li><li>Changelog</li><li>Roadmap</li>
+            <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
+            <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it Works</a></li>
+            <li><a href="#faq" className="hover:text-foreground transition-colors">FAQ</a></li>
           </ul>
         </div>
         <div>
           <div className="font-semibold text-sm mb-3">Company</div>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>About</li><li>Blog</li><li>Careers</li><li>Contact</li>
+            <li><a href="#contact" className="hover:text-foreground transition-colors">Contact</a></li>
+            <li><span className="opacity-50">Blog</span></li>
+            <li><span className="opacity-50">Careers</span></li>
           </ul>
         </div>
       </div>
