@@ -367,7 +367,7 @@ function Pricing() {
 
 function FAQ() {
   return (
-    <section className="py-24 border-t">
+    <section id="faq" className="py-24 border-t">
       <div className="max-w-3xl mx-auto px-4 lg:px-8">
         <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-center mb-10">
           Questions, answered
