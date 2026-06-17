@@ -356,8 +356,9 @@ function Pricing() {
                   p.featured ? "gradient-primary-bg text-white border-0 hover:opacity-90" : "",
                 )}
                 variant={p.featured ? "default" : "outline"}
+                asChild
               >
-                {p.cta}
+                <Link to="/signup">{p.cta}</Link>
               </Button>
             </Card>
           ))}
