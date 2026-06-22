@@ -156,9 +156,6 @@ function Hero() {
             <Button size="lg" asChild className="gradient-primary-bg text-white border-0 hover:opacity-90 shadow-glow">
               <Link to="/signup">Get Started <ArrowRight className="h-4 w-4 ml-1" /></Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <a href="#how-it-works">Watch Demo</a>
-            </Button>
           </div>
         </motion.div>
 
