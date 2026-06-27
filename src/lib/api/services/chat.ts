@@ -1,60 +1,44 @@
-import { api, API_BASE_URL, getAuthToken } from "../client";
+import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
-export interface ChatConversation {
+export interface ChatSession {
   id: string;
+  user_id: string;
   title: string;
-  updatedAt: string;
+  is_pinned: boolean;
+  is_favourite: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ChatMessage {
   id: string;
-  conversationId: string;
-  role: "user" | "assistant" | "system";
+  session_id: string;
+  sender: "user" | "ai";
   content: string;
-  createdAt: string;
+  created_at: string;
 }
 
+export type ChatConversation = ChatSession;
+
 export const chatService = {
-  // TODO: GET /chat/conversations
-  listConversations: (): Promise<ChatConversation[]> =>
-    api.get<ChatConversation[]>("/chat/conversations"),
-  // TODO: POST /chat/conversations
-  createConversation: (title?: string): Promise<ChatConversation> =>
-    api.post<ChatConversation>("/chat/conversations", { title }),
-  // TODO: GET /chat/conversations/:id/messages
-  listMessages: (conversationId: string): Promise<ChatMessage[]> =>
-    api.get<ChatMessage[]>(`/chat/conversations/${conversationId}/messages`),
-  // TODO: POST /chat/conversations/:id/messages
-  sendMessage: (conversationId: string, content: string): Promise<ChatMessage> =>
-    api.post<ChatMessage>(`/chat/conversations/${conversationId}/messages`, { content }),
-  // TODO: POST /chat/conversations/:id/messages/stream — SSE/streaming variant
-  streamMessage: async (
-    conversationId: string,
-    content: string,
-    onChunk: (chunk: string) => void,
-    signal?: AbortSignal,
-  ): Promise<void> => {
-    const token = getAuthToken();
-    const res = await fetch(
-      `${API_BASE_URL}/chat/conversations/${conversationId}/messages/stream`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ content }),
-        signal,
-      },
-    );
-    if (!res.ok || !res.body) throw new Error(`Stream failed: ${res.status}`);
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      onChunk(decoder.decode(value, { stream: true }));
-    }
+  async listSessions(filters: { recent?: boolean; isPinned?: boolean; isFavourite?: boolean } = {}): Promise<ChatSession[]> {
+    const res = await api.get<{ sessions: ChatSession[] }>("/api/chat/sessions", { query: filters });
+    return res.sessions;
   },
+  async createSession(title?: string): Promise<ChatSession> {
+    const res = await api.post<{ session: ChatSession }>("/api/chat/sessions", { title });
+    return res.session;
+  },
+  async updateSession(id: string, patch: { title?: string; isPinned?: boolean; isFavourite?: boolean }): Promise<ChatSession> {
+    const res = await api.put<{ session: ChatSession }>(`/api/chat/sessions/${id}`, patch);
+    return res.session;
+  },
+  deleteSession: (id: string): Promise<void> =>
+    api.delete(`/api/chat/sessions/${id}`, { responseType: "void" }),
+  async listMessages(sessionId: string): Promise<ChatMessage[]> {
+    const res = await api.get<{ messages: ChatMessage[] }>(`/api/chat/sessions/${sessionId}/messages`);
+    return res.messages;
+  },
+  sendMessage: (sessionId: string, content: string): Promise<{ userMessage: ChatMessage; aiMessage: ChatMessage }> =>
+    api.post(`/api/chat/sessions/${sessionId}/messages`, { content }),
 };

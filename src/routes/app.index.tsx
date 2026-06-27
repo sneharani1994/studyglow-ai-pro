@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +7,26 @@ import { PageHeader } from "@/components/page-header";
 import {
   FileText, MessageSquare, Clock, BrainCircuit, Flame, Sparkles, ArrowRight, CheckCircle2, Circle,
 } from "lucide-react";
-import { stats, recentActivity, upcomingExams, todaysPlan, weakTopics, aiRecommendations } from "@/lib/mock-data";
 import { useUser } from "@/lib/auth";
+import { dashboardService, plannerService, type DashboardStats, type PlannerTask } from "@/lib/api";
+
+// UI-only fixtures for sections the backend does not expose yet.
+const upcomingExams = [
+  { id: 1, subject: "Database Management", date: "Jun 22", days: 6, color: "from-blue-500 to-indigo-500" },
+  { id: 2, subject: "Operating Systems", date: "Jun 28", days: 12, color: "from-purple-500 to-pink-500" },
+  { id: 3, subject: "Computer Networks", date: "Jul 04", days: 18, color: "from-fuchsia-500 to-rose-500" },
+];
+const weakTopics = [
+  { topic: "Normalization", strength: 38 },
+  { topic: "Deadlock", strength: 42 },
+  { topic: "Routing Algorithms", strength: 51 },
+  { topic: "Process Scheduling", strength: 58 },
+];
+const aiRecommendations = [
+  { id: 1, title: "Master Normalization in 30 min", desc: "AI-curated lesson based on your weak areas" },
+  { id: 2, title: "Quiz: Process Scheduling", desc: "10 questions, medium difficulty" },
+  { id: 3, title: "Watch: TCP/IP deep dive", desc: "Suggested from your saved notes" },
+];
 
 const ICONS: Record<string, typeof FileText> = {
   FileText, MessageSquare, Clock, BrainCircuit, Flame, Sparkles,
@@ -20,15 +39,49 @@ export const Route = createFileRoute("/app/")({
 function Dashboard() {
   const user = useUser();
   const firstName = (user?.name ?? "there").split(" ")[0];
+  const [data, setData] = useState<DashboardStats | null>(null);
+  const [todaysTasks, setTodaysTasks] = useState<PlannerTask[]>([]);
+
+  useEffect(() => {
+    dashboardService.get().then(setData).catch(() => setData(null));
+    plannerService.list({ timeFrame: "daily" }).then(setTodaysTasks).catch(() => setTodaysTasks([]));
+  }, []);
+
+  const stats = [
+    { label: "Documents", value: data?.recentNotes.length ?? 0, change: "", icon: "FileText" },
+    { label: "AI Sessions", value: data?.aiUsageCount ?? 0, change: "", icon: "Sparkles" },
+    { label: "Study Hours", value: data?.profile.totalStudyHours ?? 0, change: "", icon: "Clock" },
+    { label: "Quizzes Taken", value: data?.quizStatistics.totalAttempts ?? 0, change: `${data?.quizStatistics.averageScorePercentage ?? 0}% avg`, icon: "BrainCircuit" },
+    { label: "Learning Streak", value: `${data?.profile.studyStreak ?? 0} days`, change: "🔥", icon: "Flame" },
+    { label: "Flashcards", value: data?.flashcardsCount ?? 0, change: "", icon: "MessageSquare" },
+  ];
+
+  const recentActivity = [
+    ...(data?.recentNotes ?? []).map((n) => ({
+      id: `note-${n.id}`,
+      action: "Updated note",
+      target: n.title,
+      time: new Date(n.updated_at).toLocaleDateString(),
+    })),
+    ...(data?.recentChats ?? []).map((c) => ({
+      id: `chat-${c.id}`,
+      action: "Asked AI",
+      target: c.title,
+      time: new Date(c.updated_at).toLocaleDateString(),
+    })),
+  ].slice(0, 5);
+
   return (
     <div>
       <PageHeader
         title={`Welcome back, ${firstName} 👋`}
         description="Here's what's on your plate today."
         action={
-          <Button className="gradient-primary-bg text-white border-0 hover:opacity-90">
-            <Sparkles className="h-4 w-4 mr-2" /> Ask AI
-          </Button>
+          <Link to="/app/chat">
+            <Button className="gradient-primary-bg text-white border-0 hover:opacity-90">
+              <Sparkles className="h-4 w-4 mr-2" /> Ask AI
+            </Button>
+          </Link>
         }
       />
 
@@ -41,7 +94,7 @@ function Dashboard() {
                 <div className="h-9 w-9 rounded-lg gradient-primary-bg/10 grid place-items-center text-primary">
                   <Icon className="h-4 w-4" />
                 </div>
-                <Badge variant="secondary" className="text-xs">{s.change}</Badge>
+                {s.change ? <Badge variant="secondary" className="text-xs">{s.change}</Badge> : null}
               </div>
               <div className="mt-3 text-2xl font-bold">{s.value}</div>
               <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -54,18 +107,25 @@ function Dashboard() {
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">Today's study plan</h3>
-            <Button variant="ghost" size="sm">View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
+            <Link to="/app/planner"><Button variant="ghost" size="sm">View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button></Link>
           </div>
           <div className="space-y-2">
-            {todaysPlan.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                {t.done ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
-                <div className="flex-1">
-                  <div className={t.done ? "line-through text-muted-foreground" : "font-medium"}>{t.task}</div>
-                  <div className="text-xs text-muted-foreground">{t.time} · {t.duration}</div>
+            {todaysTasks.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-3">No tasks for today. Open the planner to add one.</div>
+            ) : todaysTasks.map((t) => {
+              const done = t.status === "completed";
+              return (
+                <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  {done ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
+                  <div className="flex-1">
+                    <div className={done ? "line-through text-muted-foreground" : "font-medium"}>{t.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.due_date ? new Date(t.due_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""} · {t.priority}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 
@@ -85,7 +145,9 @@ function Dashboard() {
         <Card className="p-6 lg:col-span-2">
           <h3 className="font-semibold text-lg mb-4">Recent activity</h3>
           <div className="space-y-3">
-            {recentActivity.map((a) => (
+            {recentActivity.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No recent activity yet.</div>
+            ) : recentActivity.map((a) => (
               <div key={a.id} className="flex items-start gap-3 text-sm">
                 <div className="h-2 w-2 rounded-full gradient-primary-bg mt-1.5 shrink-0" />
                 <div className="flex-1">

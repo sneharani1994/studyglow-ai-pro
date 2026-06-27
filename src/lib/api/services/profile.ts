@@ -1,25 +1,44 @@
 import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
+/** Mirrors public.profiles row from backend. */
 export interface UserProfile {
   id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string | null;
-  bio?: string | null;
-  preferences?: Record<string, unknown>;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  level: number;
+  xp: number;
+  study_streak: number;
+  total_study_hours: number | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpdateProfileInput {
+  username?: string;
+  fullName?: string;
+  avatarUrl?: string;
+  studyStreak?: number;
+  totalStudyHours?: number;
+  level?: number;
+  xp?: number;
 }
 
 export const profileService = {
-  // TODO: GET /profile
-  get: (): Promise<UserProfile> => api.get<UserProfile>("/profile"),
-  // TODO: PUT /profile
-  update: (patch: Partial<UserProfile>): Promise<UserProfile> =>
-    api.put<UserProfile>("/profile", patch),
-  // TODO: POST /profile/avatar (multipart)
-  uploadAvatar: (file: File): Promise<{ avatarUrl: string }> => {
-    const fd = new FormData();
-    fd.append("avatar", file);
-    return api.post<{ avatarUrl: string }>("/profile/avatar", undefined, { rawBody: fd });
+  /** GET /api/profile → { profile } */
+  async get(): Promise<UserProfile> {
+    const res = await api.get<{ profile: UserProfile }>("/api/profile");
+    return res.profile;
   },
+  /** PUT /api/profile */
+  async update(patch: UpdateProfileInput): Promise<UserProfile> {
+    const res = await api.put<{ profile: UserProfile }>("/api/profile", patch);
+    return res.profile;
+  },
+  /** PUT /api/profile/password */
+  updatePassword: (newPassword: string): Promise<void> =>
+    api.put("/api/profile/password", { newPassword }, { responseType: "void" }),
+  /** DELETE /api/profile */
+  deleteAccount: (): Promise<void> =>
+    api.delete("/api/profile", { responseType: "void" }),
 };

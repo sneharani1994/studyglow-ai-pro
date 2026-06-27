@@ -1,27 +1,51 @@
 import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
-export interface PlannerEvent {
+export type PlannerStatus = "todo" | "in_progress" | "completed";
+export type PlannerPriority = "low" | "medium" | "high";
+export type PlannerRecurrence = "none" | "daily" | "weekly" | "monthly";
+
+export interface PlannerTask {
   id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  due_date: string | null;
+  status: PlannerStatus;
+  priority: PlannerPriority;
+  recurrence: PlannerRecurrence;
+  created_at: string;
+  updated_at?: string;
+}
+
+export type PlannerEvent = PlannerTask;
+
+export interface PlannerTaskInput {
   title: string;
   description?: string;
-  start: string;
-  end: string;
-  type?: "study" | "exam" | "break" | "task";
-  completed?: boolean;
+  dueDate?: string | null;
+  status?: PlannerStatus;
+  priority?: PlannerPriority;
+  recurrence?: PlannerRecurrence;
 }
 
 export const plannerService = {
-  // TODO: GET /planner/events
-  list: (range?: { from?: string; to?: string }): Promise<PlannerEvent[]> =>
-    api.get<PlannerEvent[]>("/planner/events", { query: range }),
-  // TODO: POST /planner/events
-  create: (input: Partial<PlannerEvent>): Promise<PlannerEvent> =>
-    api.post<PlannerEvent>("/planner/events", input),
-  // TODO: PUT /planner/events/:id
-  update: (id: string, patch: Partial<PlannerEvent>): Promise<PlannerEvent> =>
-    api.put<PlannerEvent>(`/planner/events/${id}`, patch),
-  // TODO: DELETE /planner/events/:id
+  async list(filters: {
+    timeFrame?: "daily" | "weekly" | "monthly";
+    status?: PlannerStatus;
+    priority?: PlannerPriority;
+    recurrence?: PlannerRecurrence;
+  } = {}): Promise<PlannerTask[]> {
+    const res = await api.get<{ tasks: PlannerTask[] }>("/api/planner/tasks", { query: filters });
+    return res.tasks;
+  },
+  async create(input: PlannerTaskInput): Promise<PlannerTask> {
+    const res = await api.post<{ task: PlannerTask }>("/api/planner/tasks", input);
+    return res.task;
+  },
+  async update(id: string, patch: Partial<PlannerTaskInput>): Promise<PlannerTask> {
+    const res = await api.put<{ task: PlannerTask }>(`/api/planner/tasks/${id}`, patch);
+    return res.task;
+  },
   remove: (id: string): Promise<void> =>
-    api.delete(`/planner/events/${id}`, { responseType: "void" }),
+    api.delete(`/api/planner/tasks/${id}`, { responseType: "void" }),
 };
