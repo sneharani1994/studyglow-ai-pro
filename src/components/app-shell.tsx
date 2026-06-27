@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { clearUser, initials, useUser } from "@/lib/auth";
+import { initials, logout as logoutUser, useUser } from "@/lib/auth";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -126,7 +126,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                   <div className="text-xs text-muted-foreground truncate font-normal">{user?.email ?? ""}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { clearUser(); navigate({ to: "/login" }); }}>
+                <DropdownMenuItem onClick={async () => { await logoutUser(); navigate({ to: "/login" }); }}>
                   <LogOut className="h-4 w-4 mr-2" /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
