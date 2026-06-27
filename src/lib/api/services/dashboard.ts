@@ -1,19 +1,36 @@
 import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
 export interface DashboardStats {
-  studyMinutesToday: number;
-  streakDays: number;
-  quizzesCompleted: number;
-  flashcardsReviewed: number;
-  weeklyProgress: { date: string; minutes: number }[];
-  upcomingEvents: { id: string; title: string; start: string }[];
+  profile: {
+    username: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
+    level: number;
+    xp: number;
+    studyStreak: number;
+    totalStudyHours: number;
+  };
+  recentNotes: Array<{
+    id: string;
+    title: string;
+    updated_at: string;
+    subject_id: string | null;
+    subjects?: { name: string; color: string } | null;
+  }>;
+  recentChats: Array<{ id: string; title: string; updated_at: string }>;
+  flashcardsCount: number;
+  plannerProgress: {
+    totalTasks: number;
+    completedTasks: number;
+    pendingTasks: number;
+    completionPercentage: number;
+  };
+  quizStatistics: { totalAttempts: number; averageScorePercentage: number };
+  aiUsageCount: number;
+  weeklyGoalHours: number;
+  weeklyActualHours: number;
 }
 
 export const dashboardService = {
-  // TODO: GET /dashboard
-  get: (): Promise<DashboardStats> => api.get<DashboardStats>("/dashboard"),
-  // TODO: GET /dashboard/analytics
-  analytics: (range?: "7d" | "30d" | "90d"): Promise<unknown> =>
-    api.get("/dashboard/analytics", { query: { range } }),
+  get: (): Promise<DashboardStats> => api.get<DashboardStats>("/api/dashboard"),
 };

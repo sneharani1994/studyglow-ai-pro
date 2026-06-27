@@ -1,25 +1,26 @@
 import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
 export interface UploadedFile {
   id: string;
-  name: string;
-  url: string;
-  size: number;
-  mimeType: string;
-  createdAt: string;
+  user_id: string;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+  note_id: string | null;
+  created_at: string;
 }
 
 export const uploadsService = {
-  // TODO: GET /uploads
-  list: (): Promise<UploadedFile[]> => api.get<UploadedFile[]>("/uploads"),
-  // TODO: POST /uploads (multipart/form-data). Use XHR for granular progress.
-  upload: (file: File): Promise<UploadedFile> => {
+  async list(noteId?: string): Promise<UploadedFile[]> {
+    const res = await api.get<{ uploads: UploadedFile[] }>("/api/uploads", { query: { noteId } });
+    return res.uploads;
+  },
+  async upload(file: File, noteId?: string): Promise<UploadedFile> {
     const fd = new FormData();
     fd.append("file", file);
-    return api.post<UploadedFile>("/uploads", undefined, { rawBody: fd });
+    if (noteId) fd.append("noteId", noteId);
+    const res = await api.post<{ file: UploadedFile }>("/api/uploads/upload", undefined, { rawBody: fd });
+    return res.file;
   },
-  // TODO: DELETE /uploads/:id
-  remove: (id: string): Promise<void> =>
-    api.delete(`/uploads/${id}`, { responseType: "void" }),
 };
