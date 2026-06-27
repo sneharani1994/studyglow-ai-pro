@@ -1,43 +1,93 @@
 import { api } from "../client";
 
-// TODO: confirm endpoint paths and shapes with backend.
 export interface Quiz {
   id: string;
+  user_id: string;
   title: string;
-  topic?: string;
-  questionCount: number;
-  durationMinutes?: number;
+  description: string;
+  subject_id: string | null;
+  difficulty: "easy" | "medium" | "hard";
+  created_at: string;
+  subjects?: { name: string } | null;
 }
 
 export interface QuizQuestion {
   id: string;
-  prompt: string;
+  quiz_id: string;
+  question_text: string;
   options: string[];
-  correctIndex?: number;
+  correct_option_index: number;
+  explanation: string;
 }
 
 export interface QuizAttempt {
   id: string;
-  quizId: string;
+  user_id: string;
+  quiz_id: string;
   score: number;
-  total: number;
-  completedAt: string;
+  total_questions: number;
+  answers: Record<string, number>;
+  completed_at: string;
+  quizzes?: { title: string; difficulty: string; subjects?: { name: string } | null };
+}
+
+export interface QuizAttemptResult {
+  message: string;
+  attempt: QuizAttempt;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  evaluationDetails: Array<{
+    questionId: string;
+    questionText: string;
+    userChoice: number | null;
+    correctChoice: number;
+    isCorrect: boolean;
+    explanation: string;
+  }>;
+  xpEarned: number;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  level: number;
+  xp: number;
+  study_streak: number;
 }
 
 export const quizzesService = {
-  // TODO: GET /quizzes
-  list: (): Promise<Quiz[]> => api.get<Quiz[]>("/quizzes"),
-  // TODO: GET /quizzes/:id
-  get: (id: string): Promise<Quiz> => api.get<Quiz>(`/quizzes/${id}`),
-  // TODO: GET /quizzes/:id/questions
-  questions: (id: string): Promise<QuizQuestion[]> =>
-    api.get<QuizQuestion[]>(`/quizzes/${id}/questions`),
-  // TODO: POST /quizzes/:id/attempts
-  submit: (id: string, answers: { questionId: string; selectedIndex: number }[]): Promise<QuizAttempt> =>
-    api.post<QuizAttempt>(`/quizzes/${id}/attempts`, { answers }),
-  // TODO: GET /quizzes/attempts
-  attempts: (): Promise<QuizAttempt[]> => api.get<QuizAttempt[]>("/quizzes/attempts"),
-  // TODO: POST /quizzes/generate (AI-generated quiz)
-  generate: (input: { topic: string; count?: number; difficulty?: "easy" | "medium" | "hard" }): Promise<Quiz> =>
-    api.post<Quiz>("/quizzes/generate", input),
+  /** GET /api/quizzes → { quizzes } */
+  async list(filters: { subjectId?: string; difficulty?: string } = {}): Promise<Quiz[]> {
+    const res = await api.get<{ quizzes: Quiz[] }>("/api/quizzes", { query: filters });
+    return res.quizzes;
+  },
+  /** GET /api/quizzes/:id → { quiz, questions } */
+  details: (id: string): Promise<{ quiz: Quiz; questions: QuizQuestion[] }> =>
+    api.get<{ quiz: Quiz; questions: QuizQuestion[] }>(`/api/quizzes/${id}`),
+  /** POST /api/quizzes */
+  async create(input: {
+    title: string;
+    description?: string;
+    subjectId?: string;
+    difficulty?: "easy" | "medium" | "hard";
+    questions: Array<{ questionText: string; options: string[]; correctOptionIndex: number; explanation?: string }>;
+  }): Promise<{ quiz: Quiz; questions: QuizQuestion[] }> {
+    return api.post(`/api/quizzes`, input);
+  },
+  /** POST /api/quizzes/:id/attempt — answers is map of questionId -> selectedIndex */
+  submit: (id: string, answers: Record<string, number>): Promise<QuizAttemptResult> =>
+    api.post<QuizAttemptResult>(`/api/quizzes/${id}/attempt`, { answers }),
+  /** GET /api/quizzes/attempts → { attempts } */
+  async attempts(): Promise<QuizAttempt[]> {
+    const res = await api.get<{ attempts: QuizAttempt[] }>("/api/quizzes/attempts");
+    return res.attempts;
+  },
+  /** GET /api/quizzes/leaderboard → { leaderboard } */
+  async leaderboard(): Promise<LeaderboardEntry[]> {
+    const res = await api.get<{ leaderboard: LeaderboardEntry[] }>("/api/quizzes/leaderboard");
+    return res.leaderboard;
+  },
 };
