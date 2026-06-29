@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Paperclip, Mic, Plus, Sparkles } from "lucide-react";
 import { chatService, type ChatSession, type ChatMessage } from "@/lib/api";
 import { useUser } from "@/lib/auth";
+import { toast } from "sonner";
 
 const suggestedQuestions = [
   "Explain this concept simply",
@@ -51,17 +52,20 @@ function ChatPage() {
     const text = input.trim();
     if (!text || sending) return;
     let sid = activeId;
-    if (!sid) {
-      const s = await chatService.createSession(text.slice(0, 60));
-      sid = s.id;
-      setActiveId(sid);
-      setSessions((prev) => [s, ...prev]);
-    }
     setInput("");
     setSending(true);
     try {
+      if (!sid) {
+        const s = await chatService.createSession(text.slice(0, 60));
+        sid = s.id;
+        setActiveId(sid);
+        setSessions((prev) => [s, ...prev]);
+      }
       const { userMessage, aiMessage } = await chatService.sendMessage(sid, text);
       setMessages((prev) => [...prev, userMessage, aiMessage]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send message");
+      setInput(text);
     } finally {
       setSending(false);
     }
