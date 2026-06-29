@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { Upload, FileText, FileImage, FileType, Trash2, Eye, Search, Filter } from "lucide-react";
 import { uploadsService, type UploadedFile } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/documents")({
   component: DocumentsPage,
@@ -41,6 +42,9 @@ function DocumentsPage() {
     try {
       for (const f of Array.from(files)) await uploadsService.upload(f);
       await load();
+      toast.success("Upload complete");
+    } catch (e: any) {
+      toast.error(e?.message || "Upload failed");
     } finally { setUploading(false); }
   };
 
