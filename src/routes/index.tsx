@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,7 +53,7 @@ function Index() {
       <Hero />
       <Features />
       <HowItWorks />
-      <FAQ />
+      
       <Footer />
     </div>
   );
@@ -272,111 +272,6 @@ function HowItWorks() {
   );
 }
 
-function Testimonials() {
-  return (
-    <section id="about" className="py-24 border-t">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Loved by ambitious learners</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
-            <Card key={t.name} className="p-6 glass">
-              <div className="flex gap-0.5 text-amber-400 mb-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-current" />
-                ))}
-              </div>
-              <p className="text-sm leading-relaxed">"{t.text}"</p>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full gradient-primary-bg text-white grid place-items-center text-sm font-semibold">
-                  {t.avatar}
-                </div>
-                <div>
-                  <div className="font-medium text-sm">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">{t.role}</div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Pricing() {
-  return (
-    <section id="pricing" className="py-24 border-t gradient-soft-bg">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Simple, student-friendly pricing</h2>
-          <p className="text-muted-foreground mt-4">Start free. Upgrade when you're ready to dominate.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {pricingPlans.map((p) => (
-            <Card
-              key={p.name}
-              className={cn(
-                "p-7 relative",
-                p.featured ? "shadow-glow border-primary/40 scale-[1.02]" : "glass",
-              )}
-            >
-              {p.featured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 gradient-primary-bg text-white text-xs px-3 py-1 rounded-full">
-                  Most popular
-                </div>
-              )}
-              <h3 className="font-semibold text-lg">{p.name}</h3>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">{p.price}</span>
-                <span className="text-sm text-muted-foreground">{p.period}</span>
-              </div>
-              <ul className="mt-6 space-y-2.5 text-sm">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                className={cn(
-                  "w-full mt-7",
-                  p.featured ? "gradient-primary-bg text-white border-0 hover:opacity-90" : "",
-                )}
-                variant={p.featured ? "default" : "outline"}
-                asChild
-              >
-                <Link to="/signup">{p.cta}</Link>
-              </Button>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FAQ() {
-  return (
-    <section id="faq" className="py-24 border-t">
-      <div className="max-w-3xl mx-auto px-4 lg:px-8">
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-center mb-10">
-          Questions, answered
-        </h2>
-        <Accordion type="single" collapsible className="w-full">
-          {faqs.map((f, i) => (
-            <AccordionItem key={i} value={`item-${i}`}>
-              <AccordionTrigger className="text-left">{f.q}</AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-    </section>
-  );
-}
 
 function Footer() {
   return (
