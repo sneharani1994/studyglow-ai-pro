@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { profileService, authService, type UserProfile } from "@/lib/api";
-import { useUser, setUser } from "@/lib/auth";
+import { useUser } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/settings")({ component: SettingsPage });
@@ -35,7 +35,6 @@ function SettingsPage() {
     try {
       const updated = await profileService.update({ fullName, username });
       setProfile(updated);
-      if (user) setUser({ ...user, name: updated.full_name ?? user.name });
       toast.success("Profile saved");
     } catch (e: any) { toast.error(e?.message || "Save failed"); }
     finally { setSaving(false); }
