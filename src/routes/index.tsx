@@ -195,7 +195,7 @@ function Hero() {
                   </div>
                   <div className="rounded-lg border p-4">
                     <div className="text-xs text-muted-foreground mb-2">Today's plan</div>
-                    {["Revise SQL Joins · 45m", "Quiz: Normalization · 30m", "Flashcards: TCP/IP · 20m"].map((t) => (
+                    {["Revise today's chapter · 45m", "Quick quiz · 30m", "Flashcard review · 20m"].map((t) => (
                       <div key={t} className="flex items-center gap-2 text-sm py-1.5">
                         <div className="h-1.5 w-1.5 rounded-full gradient-primary-bg" /> {t}
                       </div>

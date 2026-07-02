@@ -6,9 +6,9 @@ import { PageHeader } from "@/components/page-header";
 export const Route = createFileRoute("/app/mood")({ component: MoodPage });
 
 const moods = [
-  { emoji: "😊", label: "Motivated", score: 92, advice: "Tackle your hardest topic now — momentum is high!", activities: ["Hard quiz (DBMS)", "Mock interview", "New chapter"] },
-  { emoji: "😐", label: "Neutral", score: 68, advice: "Warm up with light flashcards, then ease into deeper work.", activities: ["Flashcards (15m)", "Quick revision", "Light reading"] },
-  { emoji: "😴", label: "Tired", score: 35, advice: "Take it easy. Audio summaries or 10 min revision is enough.", activities: ["Audio summary", "Watch concept video", "Short break"] },
+  { emoji: "😊", label: "Motivated", score: 92, advice: "Tackle your hardest topic now — momentum is high!", activities: ["Take a hard quiz", "Start a mock interview", "Begin a new chapter"] },
+  { emoji: "😐", label: "Neutral", score: 68, advice: "Warm up with light flashcards, then ease into deeper work.", activities: ["Flashcards (15 min)", "Quick revision", "Light reading"] },
+  { emoji: "😴", label: "Tired", score: 35, advice: "Take it easy. A short summary or 10 min of revision is enough.", activities: ["Read a summary", "Watch a concept video", "Take a short break"] },
 ];
 
 function MoodPage() {
