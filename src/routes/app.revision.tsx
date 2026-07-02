@@ -1,37 +1,66 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
-import { StickyNote, HelpCircle, Calculator, Layers, Lightbulb } from "lucide-react";
+import { StickyNote, Loader2 } from "lucide-react";
+import { aiService } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/revision")({ component: RevisionPage });
 
-const sections = [
-  { icon: StickyNote, title: "Quick Notes", items: ["Normalization: 1NF→atomic, 2NF→full key, 3NF→no transitive", "TCP: reliable, ordered, connection-oriented", "Deadlock: mutual exclusion + hold-wait + no preempt + circular wait"] },
-  { icon: HelpCircle, title: "Important Questions", items: ["Difference between B-tree and B+ tree", "ACID properties with examples", "Banker's algorithm walkthrough"] },
-  { icon: Calculator, title: "Formula Sheet", items: ["CPU utilization = busy time / total time", "Page fault rate = faults / references", "Throughput = jobs / unit time"] },
-  { icon: Layers, title: "Flashcards (5 sets)", items: ["DBMS Core · 24 cards", "OS Essentials · 18 cards", "Networks Fundamentals · 22 cards"] },
-  { icon: Lightbulb, title: "Exam Tips", items: ["Attempt easier questions first to build momentum", "Always draw diagrams for system design questions", "Underline keywords like 'compare', 'justify', 'explain'"] },
-];
-
 function RevisionPage() {
+  const [topic, setTopic] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const generate = async () => {
+    const t = topic.trim();
+    if (!t) return;
+    setBusy(true);
+    try {
+      const res = await aiService.generateStudyNotes(t, "standard");
+      setNotes(res.studyNotes);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not generate revision material";
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Revision Mode" description="Everything you need the night before, in one place." />
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sections.map((s) => (
-          <Card key={s.title} className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-9 w-9 rounded-lg gradient-primary-bg grid place-items-center text-white">
-                <s.icon className="h-4 w-4" />
-              </div>
-              <h3 className="font-semibold">{s.title}</h3>
-            </div>
-            <ul className="text-sm space-y-2 text-muted-foreground">
-              {s.items.map((it) => <li key={it}>• {it}</li>)}
-            </ul>
-          </Card>
-        ))}
-      </div>
+      <Card className="p-5 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+        <div className="flex-1">
+          <label className="text-sm font-medium mb-1.5 block">Topic to revise</label>
+          <Input
+            placeholder="e.g. concepts from your uploaded chapter…"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") generate(); }}
+          />
+        </div>
+        <Button onClick={generate} disabled={busy || !topic.trim()} className="gradient-primary-bg text-white border-0">
+          {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating…</> : "Generate revision"}
+        </Button>
+      </Card>
+      {!notes && !busy && (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          No revision material generated. Enter a topic above to begin.
+        </Card>
+      )}
+      {notes && !busy && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <StickyNote className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Revision notes · {topic}</h3>
+          </div>
+          <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{notes}</p>
+        </Card>
+      )}
     </div>
   );
 }
