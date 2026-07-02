@@ -4,58 +4,87 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Loader2 } from "lucide-react";
+import { aiService } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/tutor")({ component: TutorPage });
 
 const levels = ["Beginner", "Student", "Advanced", "Interview"] as const;
+type Level = typeof levels[number];
+const levelMap: Record<Level, "beginner" | "intermediate" | "advanced"> = {
+  Beginner: "beginner",
+  Student: "intermediate",
+  Advanced: "advanced",
+  Interview: "advanced",
+};
 
 function TutorPage() {
-  const [level, setLevel] = useState<typeof levels[number]>("Student");
+  const [level, setLevel] = useState<Level>("Student");
+  const [question, setQuestion] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [explanation, setExplanation] = useState("");
+  const [askedTopic, setAskedTopic] = useState("");
+
+  const ask = async () => {
+    const q = question.trim();
+    if (!q) return;
+    setBusy(true);
+    try {
+      const res = await aiService.explain(q, levelMap[level]);
+      setExplanation(res.explanation);
+      setAskedTopic(q);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not get explanation";
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader title="AI Tutor Mode" description="Your personal teacher, available 24/7." />
       <Card className="p-5 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-        <Input placeholder="Ask any doubt…" defaultValue="Explain B+ trees" className="flex-1" />
+        <Input
+          placeholder="Ask any doubt…"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") ask(); }}
+          className="flex-1"
+        />
         <div className="flex gap-2">
           {levels.map((l) => (
             <Button key={l} size="sm" variant={level === l ? "default" : "outline"}
               className={level === l ? "gradient-primary-bg text-white border-0" : ""}
               onClick={() => setLevel(l)}>{l}</Button>
           ))}
+          <Button size="sm" onClick={ask} disabled={busy || !question.trim()} className="gradient-primary-bg text-white border-0">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask"}
+          </Button>
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      {!explanation && !busy && (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          Ask a question to start learning.
+        </Card>
+      )}
+      {busy && (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
+          Generating explanation…
+        </Card>
+      )}
+      {explanation && !busy && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-3">
             <GraduationCap className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Explanation ({level})</h3>
+            <h3 className="font-semibold">{askedTopic} ({level})</h3>
           </div>
-          <p className="text-sm leading-relaxed">A B+ tree is a self-balancing tree where all data lives in the leaves, and leaves are linked together. This makes range queries blazing fast — perfect for database indexes.</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{explanation}</p>
         </Card>
-        <Card className="p-6">
-          <h3 className="font-semibold mb-3">Example</h3>
-          <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto">{`Search for key 27:
-    [10 | 25]
-    /   |   \\
- [5,8] [12,20] [27, 30, 40]
-               ↑ found in O(log n)`}</pre>
-        </Card>
-        <Card className="p-6">
-          <h3 className="font-semibold mb-3">Practice question</h3>
-          <p className="text-sm">In a B+ tree of order 4, how many keys can a leaf node hold? Justify with an example.</p>
-          <Button className="mt-4 gradient-primary-bg text-white border-0">Try answering</Button>
-        </Card>
-        <Card className="p-6">
-          <h3 className="font-semibold mb-3">Follow-up</h3>
-          <ul className="text-sm space-y-2 text-muted-foreground">
-            <li>→ How does insertion handle node overflow?</li>
-            <li>→ Compare B-tree vs B+ tree for range queries.</li>
-            <li>→ Why are B+ trees preferred for disk-based indexes?</li>
-          </ul>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }
