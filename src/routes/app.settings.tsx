@@ -26,7 +26,6 @@ function SettingsPage() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
-  const [nameErr, setNameErr] = useState<string | null>(null);
 
   useEffect(() => {
     profileService.get().then((p) => {
@@ -37,9 +36,8 @@ function SettingsPage() {
   }, []);
 
   const save = async () => {
-    setNameErr(null);
     if (!fullName.trim() && !username.trim()) {
-      setNameErr("Enter a full name or username");
+      toast.error("Enter a full name or username");
       return;
     }
     setSaving(true);
