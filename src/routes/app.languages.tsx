@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,30 +13,50 @@ export const Route = createFileRoute("/app/languages")({ component: LanguagesPag
 const langs = [
   { code: "en", name: "English" },
   { code: "hi", name: "Hindi" },
+  { code: "bn", name: "Bengali" },
+  { code: "ta", name: "Tamil" },
+  { code: "te", name: "Telugu" },
+  { code: "kn", name: "Kannada" },
+  { code: "ml", name: "Malayalam" },
+  { code: "mr", name: "Marathi" },
   { code: "gu", name: "Gujarati" },
-  { code: "es", name: "Spanish" },
-  { code: "fr", name: "French" },
+  { code: "pa", name: "Punjabi" },
+  { code: "ur", name: "Urdu" },
+  { code: "or", name: "Odia" },
+  { code: "as", name: "Assamese" },
 ] as const;
 
+const STORAGE_KEY = "studygpt.lang";
+
 function LanguagesPage() {
-  const [lang, setLang] = useState<(typeof langs)[number]>(langs[0]);
+  const [lang, setLang] = useState<(typeof langs)[number]>(() => {
+    if (typeof window === "undefined") return langs[0];
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      const found = langs.find((l) => l.code === saved);
+      return found ?? langs[0];
+    } catch { return langs[0]; }
+  });
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [askedQ, setAskedQ] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_KEY, lang.code); } catch { /* ignore */ }
+  }, [lang]);
 
   const ask = async () => {
     const q = question.trim();
     if (!q) return;
     setBusy(true);
     try {
-      const prompt = `Answer the following question in ${lang.name} only. Keep it clear and concise.\n\nQuestion: ${q}`;
+      const prompt = `You are a helpful tutor. Respond ONLY in ${lang.name} (${lang.code}). Do not use any other language. Keep the answer clear, well-structured, and educational.\n\nQuestion: ${q}`;
       const res = await aiService.explain(prompt, "intermediate");
       setAnswer(res.explanation);
       setAskedQ(q);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Translation failed";
-      toast.error(msg);
+      toast.error("AI service is temporarily busy. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -45,7 +65,7 @@ function LanguagesPage() {
   return (
     <div>
       <PageHeader title="Multi-language Learning" description="Learn in the language you think in." />
-      <Card className="p-5 mb-6 flex flex-wrap gap-2">
+      <Card className="p-4 mb-6 flex flex-wrap gap-2">
         {langs.map((l) => (
           <Button key={l.code} size="sm" variant={lang.code === l.code ? "default" : "outline"}
             className={lang.code === l.code ? "gradient-primary-bg text-white border-0" : ""}

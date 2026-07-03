@@ -1,14 +1,40 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 
 export const Route = createFileRoute("/app/mood")({ component: MoodPage });
 
+type Action = { label: string; to: string };
 const moods = [
-  { emoji: "😊", label: "Motivated", score: 92, advice: "Tackle your hardest topic now — momentum is high!", activities: ["Take a hard quiz", "Start a mock interview", "Begin a new chapter"] },
-  { emoji: "😐", label: "Neutral", score: 68, advice: "Warm up with light flashcards, then ease into deeper work.", activities: ["Flashcards (15 min)", "Quick revision", "Light reading"] },
-  { emoji: "😴", label: "Tired", score: 35, advice: "Take it easy. A short summary or 10 min of revision is enough.", activities: ["Read a summary", "Watch a concept video", "Take a short break"] },
+  {
+    emoji: "😊", label: "Motivated", score: 92,
+    advice: "Tackle your hardest topic now — momentum is high!",
+    actions: [
+      { label: "Take a hard quiz", to: "/app/quizzes" },
+      { label: "Start a mock interview", to: "/app/interview" },
+      { label: "Predict exam questions", to: "/app/predictor" },
+    ] as Action[],
+  },
+  {
+    emoji: "😐", label: "Neutral", score: 68,
+    advice: "Warm up with light flashcards, then ease into deeper work.",
+    actions: [
+      { label: "Review flashcards", to: "/app/flashcards" },
+      { label: "Quick revision", to: "/app/revision" },
+      { label: "Ask the AI tutor", to: "/app/tutor" },
+    ] as Action[],
+  },
+  {
+    emoji: "😴", label: "Tired", score: 35,
+    advice: "Take it easy. A short summary or 10 min of revision is enough.",
+    actions: [
+      { label: "Read a summary", to: "/app/summaries" },
+      { label: "Review weak topics", to: "/app/weak-topics" },
+      { label: "Plan tomorrow", to: "/app/planner" },
+    ] as Action[],
+  },
 ];
 
 function MoodPage() {
@@ -37,8 +63,12 @@ function MoodPage() {
           <h3 className="font-semibold mb-2">AI recommendation</h3>
           <p className="text-sm mb-4">{m.advice}</p>
           <div className="flex flex-wrap gap-2">
-            {m.activities.map((a) => (
-              <div key={a} className="rounded-full bg-card px-3 py-1.5 text-xs font-medium shadow-card">{a}</div>
+            {m.actions.map((a) => (
+              <Link key={a.to} to={a.to}>
+                <Button size="sm" variant="secondary" className="rounded-full h-8 text-xs font-medium shadow-card">
+                  {a.label}
+                </Button>
+              </Link>
             ))}
           </div>
         </Card>
