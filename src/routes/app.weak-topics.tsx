@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/app/weak-topics")({
 interface WeakTopic { topic: string; subject: string; strength: number; }
 
 function WeakPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
 
@@ -75,9 +76,15 @@ function WeakPage() {
             </div>
             <div className="text-xs mt-1 text-muted-foreground">{w.strength}% mastery</div>
             <div className="grid grid-cols-3 gap-2 mt-4">
-              <Button size="sm" variant="outline"><BookOpen className="h-3.5 w-3.5 mr-1" />Revise</Button>
-              <Button size="sm" variant="outline"><BrainCircuit className="h-3.5 w-3.5 mr-1" />Quiz</Button>
-              <Button size="sm" variant="outline"><Layers className="h-3.5 w-3.5 mr-1" />Cards</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/revision" })}>
+                <BookOpen className="h-3.5 w-3.5 mr-1" />Revise
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/quizzes" })}>
+                <BrainCircuit className="h-3.5 w-3.5 mr-1" />Quiz
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/flashcards" })}>
+                <Layers className="h-3.5 w-3.5 mr-1" />Cards
+              </Button>
             </div>
           </Card>
         ))}
