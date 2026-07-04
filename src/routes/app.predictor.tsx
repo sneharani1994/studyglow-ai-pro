@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { Sparkles, Loader2, Target } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { aiService } from "@/lib/api";
-import { toast } from "sonner";
+import { AIResponse } from "@/components/ai-response";
 
 export const Route = createFileRoute("/app/predictor")({
   component: PredictorPage,
@@ -18,17 +18,18 @@ function PredictorPage() {
   const [syllabus, setSyllabus] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const predict = async () => {
     const s = subject.trim();
-    if (!s) { toast.error("Enter a subject to predict for"); return; }
+    if (!s) { setError("Enter a subject to predict for"); return; }
     setBusy(true);
+    setError(null);
     try {
-      const prompt = `Act as an experienced exam predictor for the subject "${s}".${syllabus.trim() ? `\nSyllabus / topics covered:\n${syllabus.trim()}` : ""}\n\nProduce a well-formatted markdown report with these sections:\n\n## Most likely long questions\n## Most likely short questions\n## Important theory topics\n## Frequently repeated concepts\n## Study priority ranking\n## Why these are likely (AI explanation)\n\nUse bullet points, bold key terms, and be concise.`;
-      const res = await aiService.explain(prompt, "advanced");
-      setResult(res.explanation);
-    } catch {
-      toast.error("AI service is temporarily busy. Please try again.");
+      const res = await aiService.examPredictor(s, syllabus.trim() || undefined);
+      setResult(res.prediction);
+    } catch (e: any) {
+      setError(e?.message || "AI service is temporarily busy. Please try again.");
     } finally { setBusy(false); }
   };
 
@@ -53,26 +54,20 @@ function PredictorPage() {
         </div>
       </Card>
 
-      {!result && !busy && (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          Enter a subject and click <b>Predict Questions</b> to generate a personalised report.
-        </Card>
-      )}
-      {busy && (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
-          Analysing likely questions…
-        </Card>
-      )}
-      {result && !busy && (
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Target className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Predicted focus · {subject}</h3>
-          </div>
-          <div className="text-sm leading-relaxed whitespace-pre-line">{result}</div>
-        </Card>
-      )}
+      <AIResponse
+        content={result}
+        loading={busy}
+        error={error}
+        onRetry={predict}
+        onRegenerate={result ? predict : undefined}
+        title={subject ? `Predicted focus · ${subject}` : undefined}
+        pdfFileName={`exam-predictor-${subject || "report"}`}
+        emptyState={
+          <Card className="p-10 text-center text-sm text-muted-foreground">
+            Enter a subject and click <b>Predict Questions</b> to generate a personalised report.
+          </Card>
+        }
+      />
     </div>
   );
 }
