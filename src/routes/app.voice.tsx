@@ -14,10 +14,6 @@ export const Route = createFileRoute("/app/voice")({
 type Turn = { role: "user" | "assistant"; text: string; ts: number };
 const HISTORY_KEY = "studygpt.voice.history";
 
-type SR = typeof window extends { SpeechRecognition: infer T }
-  ? T
-  : typeof window extends { webkitSpeechRecognition: infer W } ? W : unknown;
-
 function getSpeechRecognition(): (new () => any) | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any };
