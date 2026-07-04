@@ -116,21 +116,14 @@ function RevisionPage() {
           Pick a document or topic, choose a revision format, then click <b>Generate revision</b>.
         </Card>
       )}
-      {busy && (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
-          Preparing your {MODES.find((m) => m.key === mode)?.label.toLowerCase()}…
-        </Card>
-      )}
-      {notes && !busy && (
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <StickyNote className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">{MODES.find((m) => m.key === mode)?.label} · {heading}</h3>
-          </div>
-          <div className="text-sm leading-relaxed whitespace-pre-line">{notes}</div>
-        </Card>
-      )}
+      <AIResponse
+        content={notes}
+        loading={busy}
+        onRegenerate={notes ? generate : undefined}
+        onRetry={generate}
+        title={heading ? `${MODES.find((m) => m.key === mode)?.label} · ${heading}` : undefined}
+        pdfFileName={`revision-${heading || mode}`}
+      />
     </div>
   );
 }

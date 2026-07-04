@@ -76,21 +76,14 @@ function TutorPage() {
           Ask a question to start learning.
         </Card>
       )}
-      {busy && (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
-          Generating explanation…
-        </Card>
-      )}
-      {explanation && !busy && (
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">{askedTopic} ({level})</h3>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-line">{explanation}</p>
-        </Card>
-      )}
+      <AIResponse
+        content={explanation}
+        loading={busy}
+        onRegenerate={explanation ? ask : undefined}
+        onRetry={ask}
+        title={askedTopic ? `${askedTopic} (${level})` : undefined}
+        pdfFileName={`tutor-${askedTopic || "notes"}`}
+      />
     </div>
   );
 }
