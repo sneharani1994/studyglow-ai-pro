@@ -144,8 +144,7 @@ export function AIResponse({
               if (match) {
                 return (
                   <SyntaxHighlighter
-                    // @ts-expect-error style type from library is loose
-                    style={oneDark}
+                    style={oneDark as never}
                     language={match[1]}
                     PreTag="div"
                     customStyle={{ borderRadius: "0.5rem", fontSize: "0.85rem", margin: 0 }}
