@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AIResponse } from "@/components/ai-response";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,16 +92,21 @@ function LanguagesPage() {
           Ask a question above to see it answered in {lang.name}.
         </Card>
       )}
-      {answer && !busy && (
+      {(answer || busy) && (
         <div className="grid lg:grid-cols-2 gap-4">
           <Card className="p-6">
             <div className="text-xs font-bold text-primary mb-2">QUESTION</div>
             <div className="text-lg font-semibold">{askedQ}</div>
           </Card>
-          <Card className="p-6 gradient-soft-bg border-0">
-            <div className="text-xs font-bold text-primary mb-2">ANSWER · {lang.name.toUpperCase()}</div>
-            <div className="text-base whitespace-pre-line">{answer}</div>
-          </Card>
+          <AIResponse
+            content={answer}
+            loading={busy}
+            onRegenerate={answer ? ask : undefined}
+            onRetry={ask}
+            title={`Answer · ${lang.name}`}
+            pdfFileName={`answer-${lang.code}`}
+            className="gradient-soft-bg border-0"
+          />
         </div>
       )}
     </div>

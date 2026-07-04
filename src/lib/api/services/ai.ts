@@ -24,6 +24,8 @@ export const aiService = {
   plannerGenerator: (focusArea: string, studyHoursPerDay = 2): Promise<{
     plannerTasks: Array<{ title: string; description: string; duration_minutes: number; priority: string }>;
   }> => api.post("/api/ai/planner-generator", { focusArea, studyHoursPerDay }),
+  examPredictor: (subject: string, syllabus?: string): Promise<{ prediction: string }> =>
+    api.post("/api/ai/exam-predictor", { subject, syllabus }),
   essay: (promptText: string, tone = "academic", lengthWords = 500): Promise<{ essay: string }> =>
     api.post("/api/ai/essay", { promptText, tone, lengthWords }),
   grammar: (text: string): Promise<unknown> => api.post("/api/ai/grammar", { text }),
