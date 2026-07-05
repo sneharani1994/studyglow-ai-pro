@@ -7,22 +7,19 @@ import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { uploadsService, aiService, type UploadedFile } from "@/lib/api";
 import { toast } from "sonner";
+import { AIResponse } from "@/components/ai-response";
+import { emitAppRefresh } from "@/lib/events";
 
 export const Route = createFileRoute("/app/summaries")({
   component: SummariesPage,
 });
-
-function splitSummary(summary: string) {
-  const blocks = summary.split(/\n\s*\n/).filter(Boolean);
-  if (blocks.length <= 1) return [{ title: "Summary", body: summary }];
-  return blocks.map((b, i) => ({ title: `Section ${i + 1}`, body: b }));
-}
 
 function SummariesPage() {
   const [docs, setDocs] = useState<UploadedFile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [summary, setSummary] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     uploadsService.list().then((d) => {
@@ -36,17 +33,30 @@ function SummariesPage() {
   const generate = async () => {
     if (!selected) return;
     setBusy(true);
+    setError(null);
     try {
-      const res = await aiService.summarize(selected.filename, "medium");
-      setSummary(res.summary);
+      // Rich structured "professional notes" prompt via generateStudyNotes → markdown.
+      const prompt = `Create professional structured study notes for the document titled "${selected.filename}". Format as markdown with these clearly labeled sections:
+
+# Title
+## Introduction
+## Key Concepts
+## Bullet Points
+## Definitions
+## Important Formulae
+## Examples
+## Quick Revision
+## Exam Tips
+## Conclusion`;
+      const res = await aiService.generateStudyNotes(prompt, "deep dive");
+      setSummary(res.studyNotes);
+      emitAppRefresh({ source: "summaries" });
     } catch (e: any) {
-      toast.error(e?.message || "Could not generate summary");
+      const msg = e?.message || "Could not generate summary";
+      setError(msg);
+      toast.error(msg);
     } finally { setBusy(false); }
   };
-
-  const sections = summary
-    ? splitSummary(summary)
-    : [{ title: "No summary yet", body: "Pick a document and click Generate summary." }];
 
   return (
     <div>
@@ -54,7 +64,7 @@ function SummariesPage() {
       <Card className="p-5 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
         <div className="flex-1">
           <label className="text-sm font-medium mb-1.5 block">Select document</label>
-          <Select value={selectedId ?? ""} onValueChange={(v) => { setSelectedId(v); setSummary(""); }}>
+          <Select value={selectedId ?? ""} onValueChange={(v) => { setSelectedId(v); setSummary(""); setError(null); }}>
             <SelectTrigger><SelectValue placeholder="Choose a document" /></SelectTrigger>
             <SelectContent>
               {docs.length === 0
@@ -67,14 +77,20 @@ function SummariesPage() {
           <Sparkles className="h-4 w-4 mr-2" /> {busy ? "Generating…" : "Generate summary"}
         </Button>
       </Card>
-      <div className="grid lg:grid-cols-2 gap-4">
-        {sections.map((s) => (
-          <Card key={s.title} className="p-6">
-            <h3 className="font-semibold text-lg gradient-text">{s.title}</h3>
-            <p className="text-sm text-muted-foreground mt-3 whitespace-pre-line leading-relaxed">{s.body}</p>
+      <AIResponse
+        content={summary}
+        loading={busy}
+        error={error}
+        onRegenerate={generate}
+        onRetry={generate}
+        title={selected?.filename ?? "Summary"}
+        pdfFileName={`${selected?.filename ?? "summary"}-notes`}
+        emptyState={
+          <Card className="p-10 text-center text-sm text-muted-foreground">
+            Pick a document and click Generate summary.
           </Card>
-        ))}
-      </div>
+        }
+      />
     </div>
   );
 }
