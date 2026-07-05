@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, Paperclip, Mic, Plus, Sparkles } from "lucide-react";
-import { chatService, type ChatSession, type ChatMessage } from "@/lib/api";
+import { Send, Paperclip, Mic, MicOff, Plus, Sparkles, Loader2 } from "lucide-react";
+import { chatService, uploadsService, type ChatSession, type ChatMessage } from "@/lib/api";
 import { useUser } from "@/lib/auth";
 import { toast } from "sonner";
+import { emitAppRefresh } from "@/lib/events";
 
 const suggestedQuestions = [
   "Explain this concept simply",
@@ -20,6 +21,19 @@ export const Route = createFileRoute("/app/chat")({
   component: ChatPage,
 });
 
+const ACTIVE_SESSION_KEY = "studygpt.chat.activeSessionId";
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: any) => void) | null;
+  onerror: ((e: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
 function ChatPage() {
   const user = useUser();
   const initials = (user?.name ?? "ME").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
@@ -28,24 +42,40 @@ function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     chatService.listSessions({ recent: true }).then((s) => {
       setSessions(s);
-      if (s.length && !activeId) setActiveId(s[0].id);
+      // Restore last active session from localStorage; else default to most recent.
+      const stored = typeof window !== "undefined" ? window.localStorage.getItem(ACTIVE_SESSION_KEY) : null;
+      const match = stored && s.find((x) => x.id === stored);
+      if (match) setActiveId(match.id);
+      else if (s.length) setActiveId(s[0].id);
     }).catch(() => setSessions([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!activeId) { setMessages([]); return; }
+    try { window.localStorage.setItem(ACTIVE_SESSION_KEY, activeId); } catch { /* ignore */ }
     chatService.listMessages(activeId).then(setMessages).catch(() => setMessages([]));
   }, [activeId]);
+
+  // Auto-scroll to newest message.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, sending]);
 
   const newChat = async () => {
     const s = await chatService.createSession("New chat");
     setSessions((prev) => [s, ...prev]);
     setActiveId(s.id);
+    emitAppRefresh({ source: "chat" });
   };
 
   const send = async () => {
@@ -54,6 +84,14 @@ function ChatPage() {
     let sid = activeId;
     setInput("");
     setSending(true);
+    const optimistic: ChatMessage = {
+      id: `local-${Date.now()}`,
+      session_id: sid ?? "pending",
+      sender: "user",
+      content: text,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
     try {
       if (!sid) {
         const s = await chatService.createSession(text.slice(0, 60));
@@ -62,12 +100,80 @@ function ChatPage() {
         setSessions((prev) => [s, ...prev]);
       }
       const { userMessage, aiMessage } = await chatService.sendMessage(sid, text);
-      setMessages((prev) => [...prev, userMessage, aiMessage]);
+      setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), userMessage, aiMessage]);
+      emitAppRefresh({ source: "chat" });
     } catch (e: any) {
       toast.error(e?.message || "Failed to send message");
       setInput(text);
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     } finally {
       setSending(false);
+    }
+  };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadsService.upload(file);
+      toast.success(`Uploaded ${file.name}`);
+      // Ensure we have a session, then send a message that references the file
+      let sid = activeId;
+      if (!sid) {
+        const s = await chatService.createSession(file.name.slice(0, 60));
+        sid = s.id;
+        setActiveId(sid);
+        setSessions((prev) => [s, ...prev]);
+      }
+      const contextMsg = `📎 I've uploaded a document: "${uploaded.filename}". Please use this document as context for our conversation. Ask me what I want to know about it.`;
+      const { userMessage, aiMessage } = await chatService.sendMessage(sid, contextMsg);
+      setMessages((prev) => [...prev, userMessage, aiMessage]);
+      emitAppRefresh({ source: "uploads" });
+    } catch (err: any) {
+      toast.error(err?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const toggleMic = () => {
+    if (typeof window === "undefined") return;
+    const SR: any =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input is not supported in this browser");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec: SpeechRecognitionLike = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput((prev) => (prev ? prev + " " : "") + transcript.trim());
+    };
+    rec.onerror = (err: any) => {
+      toast.error(err?.error === "not-allowed" ? "Microphone permission denied" : "Voice input error");
+      setListening(false);
+    };
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
     }
   };
 
@@ -94,7 +200,7 @@ function ChatPage() {
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="font-medium">{active?.title ?? "New conversation"}</span>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
           {messages.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-16">
               Start the conversation — ask anything about your notes.
@@ -119,7 +225,14 @@ function ChatPage() {
             );
           })}
           {sending ? (
-            <div className="text-xs text-muted-foreground">AI is thinking…</div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> AI is thinking
+              <span className="inline-flex gap-0.5">
+                <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
+                <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
+                <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
+              </span>
+            </div>
           ) : null}
         </div>
         <div className="border-t p-4 lg:p-6 max-w-4xl mx-auto w-full">
@@ -129,7 +242,22 @@ function ChatPage() {
             ))}
           </div>
           <div className="flex gap-2 items-end glass rounded-2xl p-2">
-            <Button variant="ghost" size="icon" disabled title="Attachments coming soon"><Paperclip className="h-4 w-4" /></Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,image/*"
+              className="hidden"
+              onChange={handleUpload}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={openFilePicker}
+              disabled={uploading || sending}
+              title="Upload PDF, DOCX, TXT or image"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -137,7 +265,16 @@ function ChatPage() {
               placeholder="Ask anything about your notes…"
               className="border-0 bg-transparent focus-visible:ring-0"
             />
-            <Button variant="ghost" size="icon" disabled title="Voice input coming soon"><Mic className="h-4 w-4" /></Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMic}
+              disabled={sending}
+              title={listening ? "Stop listening" : "Voice input"}
+              className={listening ? "text-destructive" : ""}
+            >
+              {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
             <Button size="icon" onClick={send} disabled={sending || !input.trim()} className="gradient-primary-bg text-white border-0"><Send className="h-4 w-4" /></Button>
           </div>
         </div>

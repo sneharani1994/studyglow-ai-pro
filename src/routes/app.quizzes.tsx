@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Clock, Sparkles, RotateCcw } from "lucide-react";
 import { quizzesService, aiService, type Quiz, type QuizQuestion, type QuizAttemptResult } from "@/lib/api";
 import { toast } from "sonner";
+import { emitAppRefresh } from "@/lib/events";
 
 export const Route = createFileRoute("/app/quizzes")({
   component: QuizzesPage,
@@ -46,6 +47,7 @@ function QuizzesPage() {
     try {
       const r = await quizzesService.submit(active.quiz.id, answers);
       setResult(r);
+      emitAppRefresh({ source: "quizzes" });
     } finally { setBusy(false); }
   };
 
@@ -73,6 +75,7 @@ function QuizzesPage() {
       setAnswers({});
       setResult(null);
       toast.success("Quiz generated");
+      emitAppRefresh({ source: "quizzes" });
     } catch (e: any) {
       toast.error(e?.message || "Could not generate quiz");
     } finally { setBusy(false); }
@@ -107,6 +110,9 @@ function QuizzesPage() {
           <div>
             <Badge variant="secondary">{active.quiz.subjects?.name ?? "Quiz"} · {active.quiz.difficulty}</Badge>
             <h3 className="font-semibold text-lg mt-2">{active.quiz.title}</h3>
+            {active.quiz.description ? (
+              <div className="text-xs text-muted-foreground mt-1">{active.quiz.description}</div>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" /> {active.questions.length} questions
@@ -141,8 +147,15 @@ function QuizzesPage() {
                   ))}
                 </RadioGroup>
                 {result && (
-                  <div className={`text-xs mt-2 ${isCorrect ? "text-emerald-600" : isWrong ? "text-destructive" : "text-muted-foreground"}`}>
-                    {isCorrect ? "✓ Correct" : isWrong ? `✗ Correct answer: ${q.options[q.correct_option_index]}` : "Not answered"}
+                  <div className="mt-2 space-y-1">
+                    <div className={`text-xs ${isCorrect ? "text-emerald-600" : isWrong ? "text-destructive" : "text-muted-foreground"}`}>
+                      {isCorrect ? "✓ Correct" : isWrong ? `✗ Correct answer: ${q.options[q.correct_option_index]}` : "Not answered"}
+                    </div>
+                    {q.explanation ? (
+                      <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-2 leading-relaxed">
+                        <span className="font-semibold">Explanation:</span> {q.explanation}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -154,10 +167,19 @@ function QuizzesPage() {
           <Card className="mt-8 p-6 gradient-soft-bg border-0">
             <div className="text-center">
               <div className="text-5xl font-bold gradient-text">{result.score}/{result.totalQuestions}</div>
-              <div className="text-muted-foreground mt-1">Great effort! Focus on the questions you missed.</div>
-              <Button onClick={reset} variant="outline" className="mt-4">
-                <RotateCcw className="h-4 w-4 mr-2" /> Retake
-              </Button>
+              <div className="text-lg font-semibold mt-1">{result.percentage}% · +{result.xpEarned} XP</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {result.evaluationDetails.filter((d) => d.isCorrect).length} correct ·{" "}
+                {result.evaluationDetails.filter((d) => !d.isCorrect).length} wrong
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center mt-4">
+                <Button onClick={reset} variant="outline">
+                  <RotateCcw className="h-4 w-4 mr-2" /> Retake
+                </Button>
+                <Button onClick={generate} disabled={busy} className="gradient-primary-bg text-white border-0">
+                  <Sparkles className="h-4 w-4 mr-2" /> Generate another
+                </Button>
+              </div>
             </div>
           </Card>
         ) : (

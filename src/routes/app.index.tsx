@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   dashboardService, plannerService, quizzesService, aiService,
   type DashboardStats, type PlannerTask, type QuizAttempt,
 } from "@/lib/api";
+import { useAppRefresh } from "@/lib/events";
 
 const EXAM_GRADIENTS = [
   "from-blue-500 to-indigo-500",
@@ -39,9 +40,9 @@ function Dashboard() {
   const [aiHistory, setAiHistory] = useState<Array<{ id: string; feature_type: string; prompt: string }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.allSettled([
+  const refetch = useCallback((initial = false) => {
+    if (initial) setLoading(true);
+    return Promise.allSettled([
       dashboardService.get(),
       plannerService.list({ timeFrame: "daily" }),
       plannerService.list({ timeFrame: "monthly" }),
@@ -64,6 +65,9 @@ function Dashboard() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => { refetch(true); }, [refetch]);
+  useAppRefresh(() => { refetch(false); });
 
   // Derive weak topics from low-scoring quiz attempts.
   const weakTopics = (() => {

@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Sparkles, Trash2, Plus, Loader2 } from "lucide-react";
 import { plannerService, aiService, type PlannerTask } from "@/lib/api";
 import { toast } from "sonner";
+import { emitAppRefresh } from "@/lib/events";
 
 export const Route = createFileRoute("/app/planner")({
   component: PlannerPage,
@@ -46,6 +47,7 @@ function PlannerPage() {
       setTasks((prev) => [task, ...prev]);
       setNewTitle("");
       toast.success("Task added");
+      emitAppRefresh({ source: "planner" });
     } catch (e: any) { toast.error(e?.message || "Could not add task"); }
   };
 
@@ -54,6 +56,7 @@ function PlannerPage() {
       await plannerService.remove(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
       toast.success("Task deleted");
+      emitAppRefresh({ source: "planner" });
     } catch (e: any) { toast.error(e?.message || "Delete failed"); }
   };
 
@@ -71,6 +74,7 @@ function PlannerPage() {
       }
       await load();
       toast.success("Plan generated");
+      emitAppRefresh({ source: "planner" });
     } catch (e: any) {
       toast.error(e?.message || "Could not generate plan");
     } finally { setBusy(false); }
