@@ -33,7 +33,6 @@ import { Route as AppMoodRouteImport } from './routes/app.mood'
 import { Route as AppLanguagesRouteImport } from './routes/app.languages'
 import { Route as AppInterviewRouteImport } from './routes/app.interview'
 import { Route as AppHandwrittenRouteImport } from './routes/app.handwritten'
-import { Route as AppFlashcardsRouteImport } from './routes/app.flashcards'
 import { Route as AppDocumentsRouteImport } from './routes/app.documents'
 import { Route as AppConceptMapsRouteImport } from './routes/app.concept-maps'
 import { Route as AppChatRouteImport } from './routes/app.chat'
@@ -163,11 +162,6 @@ const AppHandwrittenRoute = AppHandwrittenRouteImport.update({
   path: '/handwritten',
   getParentRoute: () => AppRoute,
 } as any)
-const AppFlashcardsRoute = AppFlashcardsRouteImport.update({
-  id: '/flashcards',
-  path: '/flashcards',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -227,7 +221,6 @@ export interface FileRoutesByFullPath {
   '/app/chat': typeof AppChatRoute
   '/app/concept-maps': typeof AppConceptMapsRoute
   '/app/documents': typeof AppDocumentsRoute
-  '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
@@ -260,7 +253,6 @@ export interface FileRoutesByTo {
   '/app/chat': typeof AppChatRoute
   '/app/concept-maps': typeof AppConceptMapsRoute
   '/app/documents': typeof AppDocumentsRoute
-  '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
@@ -296,7 +288,6 @@ export interface FileRoutesById {
   '/app/chat': typeof AppChatRoute
   '/app/concept-maps': typeof AppConceptMapsRoute
   '/app/documents': typeof AppDocumentsRoute
-  '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
@@ -333,7 +324,6 @@ export interface FileRouteTypes {
     | '/app/chat'
     | '/app/concept-maps'
     | '/app/documents'
-    | '/app/flashcards'
     | '/app/handwritten'
     | '/app/interview'
     | '/app/languages'
@@ -366,7 +356,6 @@ export interface FileRouteTypes {
     | '/app/chat'
     | '/app/concept-maps'
     | '/app/documents'
-    | '/app/flashcards'
     | '/app/handwritten'
     | '/app/interview'
     | '/app/languages'
@@ -401,7 +390,6 @@ export interface FileRouteTypes {
     | '/app/chat'
     | '/app/concept-maps'
     | '/app/documents'
-    | '/app/flashcards'
     | '/app/handwritten'
     | '/app/interview'
     | '/app/languages'
@@ -601,13 +589,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHandwrittenRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/flashcards': {
-      id: '/app/flashcards'
-      path: '/flashcards'
-      fullPath: '/app/flashcards'
-      preLoaderRoute: typeof AppFlashcardsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/documents': {
       id: '/app/documents'
       path: '/documents'
@@ -690,7 +671,6 @@ interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
   AppConceptMapsRoute: typeof AppConceptMapsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
-  AppFlashcardsRoute: typeof AppFlashcardsRoute
   AppHandwrittenRoute: typeof AppHandwrittenRoute
   AppInterviewRoute: typeof AppInterviewRoute
   AppLanguagesRoute: typeof AppLanguagesRoute
@@ -712,7 +692,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
   AppConceptMapsRoute: AppConceptMapsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
-  AppFlashcardsRoute: AppFlashcardsRoute,
   AppHandwrittenRoute: AppHandwrittenRoute,
   AppInterviewRoute: AppInterviewRoute,
   AppLanguagesRoute: AppLanguagesRoute,
@@ -745,13 +724,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
