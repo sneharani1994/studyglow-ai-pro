@@ -28,6 +28,7 @@ import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppRevisionRouteImport } from './routes/app.revision'
 import { Route as AppQuizzesRouteImport } from './routes/app.quizzes'
 import { Route as AppPredictorRouteImport } from './routes/app.predictor'
+import { Route as AppPlannerRouteImport } from './routes/app.planner'
 import { Route as AppMoodRouteImport } from './routes/app.mood'
 import { Route as AppLanguagesRouteImport } from './routes/app.languages'
 import { Route as AppInterviewRouteImport } from './routes/app.interview'
@@ -137,6 +138,11 @@ const AppPredictorRoute = AppPredictorRouteImport.update({
   path: '/predictor',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlannerRoute = AppPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMoodRoute = AppMoodRouteImport.update({
   id: '/mood',
   path: '/mood',
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
   '/app/predictor': typeof AppPredictorRoute
   '/app/quizzes': typeof AppQuizzesRoute
   '/app/revision': typeof AppRevisionRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
   '/app/predictor': typeof AppPredictorRoute
   '/app/quizzes': typeof AppQuizzesRoute
   '/app/revision': typeof AppRevisionRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
+  '/app/planner': typeof AppPlannerRoute
   '/app/predictor': typeof AppPredictorRoute
   '/app/quizzes': typeof AppQuizzesRoute
   '/app/revision': typeof AppRevisionRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
+    | '/app/planner'
     | '/app/predictor'
     | '/app/quizzes'
     | '/app/revision'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
+    | '/app/planner'
     | '/app/predictor'
     | '/app/quizzes'
     | '/app/revision'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
+    | '/app/planner'
     | '/app/predictor'
     | '/app/quizzes'
     | '/app/revision'
@@ -554,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPredictorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/planner': {
+      id: '/app/planner'
+      path: '/planner'
+      fullPath: '/app/planner'
+      preLoaderRoute: typeof AppPlannerRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/mood': {
       id: '/app/mood'
       path: '/mood'
@@ -676,6 +695,7 @@ interface AppRouteChildren {
   AppInterviewRoute: typeof AppInterviewRoute
   AppLanguagesRoute: typeof AppLanguagesRoute
   AppMoodRoute: typeof AppMoodRoute
+  AppPlannerRoute: typeof AppPlannerRoute
   AppPredictorRoute: typeof AppPredictorRoute
   AppQuizzesRoute: typeof AppQuizzesRoute
   AppRevisionRoute: typeof AppRevisionRoute
@@ -697,6 +717,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInterviewRoute: AppInterviewRoute,
   AppLanguagesRoute: AppLanguagesRoute,
   AppMoodRoute: AppMoodRoute,
+  AppPlannerRoute: AppPlannerRoute,
   AppPredictorRoute: AppPredictorRoute,
   AppQuizzesRoute: AppQuizzesRoute,
   AppRevisionRoute: AppRevisionRoute,
