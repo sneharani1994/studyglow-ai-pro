@@ -32,6 +32,7 @@ import { Route as AppPlannerRouteImport } from './routes/app.planner'
 import { Route as AppMoodRouteImport } from './routes/app.mood'
 import { Route as AppLanguagesRouteImport } from './routes/app.languages'
 import { Route as AppInterviewRouteImport } from './routes/app.interview'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppHandwrittenRouteImport } from './routes/app.handwritten'
 import { Route as AppFlashcardsRouteImport } from './routes/app.flashcards'
 import { Route as AppDocumentsRouteImport } from './routes/app.documents'
@@ -158,6 +159,11 @@ const AppInterviewRoute = AppInterviewRouteImport.update({
   path: '/interview',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHandwrittenRoute = AppHandwrittenRouteImport.update({
   id: '/handwritten',
   path: '/handwritten',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/app/documents': typeof AppDocumentsRoute
   '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/app/documents': typeof AppDocumentsRoute
   '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/app/documents': typeof AppDocumentsRoute
   '/app/flashcards': typeof AppFlashcardsRoute
   '/app/handwritten': typeof AppHandwrittenRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/interview': typeof AppInterviewRoute
   '/app/languages': typeof AppLanguagesRoute
   '/app/mood': typeof AppMoodRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/app/documents'
     | '/app/flashcards'
     | '/app/handwritten'
+    | '/app/history'
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/app/documents'
     | '/app/flashcards'
     | '/app/handwritten'
+    | '/app/history'
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/app/documents'
     | '/app/flashcards'
     | '/app/handwritten'
+    | '/app/history'
     | '/app/interview'
     | '/app/languages'
     | '/app/mood'
@@ -594,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInterviewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/history': {
+      id: '/app/history'
+      path: '/history'
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/handwritten': {
       id: '/app/handwritten'
       path: '/handwritten'
@@ -692,6 +711,7 @@ interface AppRouteChildren {
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppFlashcardsRoute: typeof AppFlashcardsRoute
   AppHandwrittenRoute: typeof AppHandwrittenRoute
+  AppHistoryRoute: typeof AppHistoryRoute
   AppInterviewRoute: typeof AppInterviewRoute
   AppLanguagesRoute: typeof AppLanguagesRoute
   AppMoodRoute: typeof AppMoodRoute
@@ -714,6 +734,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDocumentsRoute: AppDocumentsRoute,
   AppFlashcardsRoute: AppFlashcardsRoute,
   AppHandwrittenRoute: AppHandwrittenRoute,
+  AppHistoryRoute: AppHistoryRoute,
   AppInterviewRoute: AppInterviewRoute,
   AppLanguagesRoute: AppLanguagesRoute,
   AppMoodRoute: AppMoodRoute,

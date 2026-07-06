@@ -2,7 +2,7 @@ import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-route
 import {
   LayoutDashboard, FileText, MessageSquare, Mic, FileSearch, BrainCircuit,
   Layers, CalendarRange, Sparkles, Target, GraduationCap, Network,
-  UserCheck, RotateCcw, ScanLine, Languages, SmilePlus, BarChart3,
+  UserCheck, RotateCcw, ScanLine, Languages, SmilePlus, BarChart3, History,
   Settings, Bell, Search, Menu, GraduationCap as Logo, LogOut,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -38,6 +38,7 @@ const nav = [
   { to: "/app/languages", label: "Languages", icon: Languages },
   { to: "/app/mood", label: "Mood Tracker", icon: SmilePlus },
   { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/app/history", label: "AI History", icon: History },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 
