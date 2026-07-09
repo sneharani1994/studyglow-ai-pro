@@ -125,49 +125,123 @@ function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {loading ? Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
+          <Skeleton key={i} className="h-28 rounded-xl bg-muted/40" />
         )) : stats.map((s) => {
           const Icon = ICONS[s.icon] ?? Sparkles;
+          const isStreak = s.icon === "Flame";
           return (
-            <Card key={s.label} className="p-5 glass hover:shadow-glow transition-all">
+            <Card key={s.label} className="p-5 glass border-border/40 hover:border-border/80 hover:shadow-glow transition-all duration-300 hover:-translate-y-0.5 group">
               <div className="flex items-center justify-between">
-                <div className="h-9 w-9 rounded-lg gradient-primary-bg/10 grid place-items-center text-primary">
-                  <Icon className="h-4 w-4" />
+                <div className={`h-9 w-9 rounded-lg ${isStreak
+                  ? "bg-rose-500/10 text-rose-500"
+                  : "bg-primary/10 text-primary"
+                  }`}>
+                  <Icon className={`h-4.5 w-4.5 ${isStreak ? "animate-pulse" : ""}`} />
                 </div>
-                {s.change ? <Badge variant="secondary" className="text-xs">{s.change}</Badge> : null}
+                {s.change ? (
+                  <Badge variant="secondary" className={`text-[10px] px-1.5 py-0.5 font-semibold ${isStreak
+                    ? "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                    : "bg-primary/10 text-primary border-primary/20"
+                    }`}>
+                    {s.change}
+                  </Badge>
+                ) : null}
               </div>
-              <div className="mt-3 text-2xl font-bold">{s.value}</div>
-              <div className="text-xs text-muted-foreground">{s.label}</div>
+              <div className="mt-4 text-2xl font-bold tracking-tight text-foreground/95">{s.value}</div>
+              <div className="text-xs text-muted-foreground/80 mt-0.5 font-medium">{s.label}</div>
             </Card>
           );
         })}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-lg">Today's study plan</h3>
-            <Link to="/app/planner"><Button variant="ghost" size="sm">View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button></Link>
+        <Card className="p-6 lg:col-span-2 border-border/40 glass">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-bold text-base text-foreground/90">Today's study plan</h3>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">Tasks scheduled for today</p>
+            </div>
+            <Link to="/app/planner">
+              <Button variant="ghost" size="sm" className="text-xs text-primary hover:bg-primary/5">
+                View all <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {loading ? (
               <>
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-14 w-full rounded-lg bg-muted/40" />
+                <Skeleton className="h-14 w-full rounded-lg bg-muted/40" />
+                <Skeleton className="h-14 w-full rounded-lg bg-muted/40" />
               </>
             ) : todaysTasks.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-3">No tasks for today. Open the planner to add one.</div>
+              <div className="text-center text-xs text-muted-foreground py-10 border border-dashed rounded-lg bg-muted/10">
+                No tasks for today. Open the planner to add one.
+              </div>
             ) : todaysTasks.map((t) => {
               const done = t.status === "completed";
+              const priorityColor = t.priority === "high" ? "bg-rose-500/10 text-rose-500 border-rose-500/20" :
+                t.priority === "medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                  "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
               return (
-                <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  {done ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
-                  <div className="flex-1">
-                    <div className={done ? "line-through text-muted-foreground" : "font-medium"}>{t.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t.due_date ? new Date(t.due_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""} · {t.priority}
+                <div key={t.id} className={`flex items-center gap-3 p-3.5 rounded-xl border border-border/10 transition-all duration-200 ${done
+                  ? "bg-muted/20 opacity-60"
+                  : "bg-card hover:bg-muted/20 shadow-sm border-border/30"
+                  }`}>
+                  <div className="shrink-0">
+                    {done ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500 fill-emerald-500/10" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground/60 hover:text-primary transition-colors cursor-pointer" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-xs font-semibold truncate ${done ? "line-through text-muted-foreground" : "text-foreground"
+                      }`} >
+                      {t.title}
                     </div>
+                    <div className="text-[10px] text-muted-foreground/75 mt-0.5 flex items-center gap-2">
+                      {t.due_date ? <span>{new Date(t.due_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                      {t.due_date && <span>·</span>}
+                      <span>{t.priority} priority</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 ${priorityColor}`}>
+                    {t.priority}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="p-6 border-border/40 glass">
+          <div className="mb-5">
+            <h3 className="font-bold text-base text-foreground/90">Upcoming Exams</h3>
+            <p className="text-xs text-muted-foreground/80 mt-0.5">Prepare ahead of time</p>
+          </div>
+          <div className="space-y-4">
+            {loading ? (
+              <>
+                <Skeleton className="h-20 w-full rounded-xl bg-muted/40" />
+                <Skeleton className="h-20 w-full rounded-xl bg-muted/40" />
+              </>
+            ) : upcomingTasks.length === 0 ? (
+              <div className="text-center text-xs text-muted-foreground py-10 border border-dashed rounded-lg bg-muted/10">
+                No upcoming exams. <Link to="/app/planner" className="text-primary underline">Add one</Link>.
+              </div>
+            ) : upcomingTasks.map((t, i) => {
+              const due = new Date(t.due_date!);
+              const days = Math.max(0, Math.ceil((due.getTime() - Date.now()) / 86400000));
+              return (
+                <div key={t.id} className="relative rounded-xl overflow-hidden shadow-sm bg-gradient-soft border border-border/40 p-4 pl-5">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 gradient-primary-bg" />
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {due.toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" })}
+                  </div>
+                  <div className="font-bold text-xs mt-1 text-foreground/90 leading-tight">{t.title}</div>
+                  <div className="inline-flex items-center gap-1 text-[10px] text-primary font-semibold mt-2.5 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
+                    <Clock className="h-3 w-3" /> {days} day{days === 1 ? "" : "s"} left
                   </div>
                 </div>
               );
@@ -175,76 +249,57 @@ function Dashboard() {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-lg mb-4">Upcoming</h3>
-          <div className="space-y-3">
-            {loading ? (
-              <>
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </>
-            ) : upcomingTasks.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                No upcoming exams. <Link to="/app/planner" className="text-primary underline">Add one</Link>.
-              </div>
-            ) : upcomingTasks.map((t, i) => {
-              const due = new Date(t.due_date!);
-              const days = Math.max(0, Math.ceil((due.getTime() - Date.now()) / 86400000));
-              return (
-                <div key={t.id} className={`rounded-lg p-4 bg-gradient-to-br ${EXAM_GRADIENTS[i % EXAM_GRADIENTS.length]} text-white`}>
-                  <div className="text-xs opacity-80">{due.toLocaleDateString(undefined, { month: "short", day: "2-digit" })}</div>
-                  <div className="font-semibold mt-1">{t.title}</div>
-                  <div className="text-xs opacity-80 mt-1">{days} day{days === 1 ? "" : "s"} left</div>
-                </div>
-              );
-            })}
+        <Card className="p-6 lg:col-span-2 border-border/40 glass">
+          <div className="mb-5">
+            <h3 className="font-bold text-base text-foreground/90">Recent activity</h3>
+            <p className="text-xs text-muted-foreground/80 mt-0.5 font-normal">Tracking your progress log</p>
           </div>
-        </Card>
-
-        <Card className="p-6 lg:col-span-2">
-          <h3 className="font-semibold text-lg mb-4">Recent activity</h3>
-          <div className="space-y-3">
+          <div className="relative pl-4 space-y-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border/40">
             {loading ? (
               <>
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-6 w-2/3" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
               </>
             ) : recentActivity.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No recent activity yet.</div>
+              <div className="text-xs text-muted-foreground py-4">No recent activity yet.</div>
             ) : recentActivity.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 text-sm">
-                <div className="h-2 w-2 rounded-full gradient-primary-bg mt-1.5 shrink-0" />
-                <div className="flex-1">
-                  <span className="text-muted-foreground">{a.action}</span> <span className="font-medium">{a.target}</span>
+              <div key={a.id} className="relative flex items-start gap-3 text-xs leading-relaxed group">
+                <span className="absolute -left-[18.5px] top-1.5 h-2 w-2 rounded-full border bg-background border-primary transition-transform duration-300 group-hover:scale-125" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-muted-foreground/90">{a.action}</span>{" "}
+                  <span className="font-semibold text-foreground/80 truncate inline-block max-w-[200px] align-bottom">{a.target}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{a.time}</span>
+                <span className="text-[10px] text-muted-foreground/75 font-normal shrink-0">{a.time}</span>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-lg mb-4">Weak topics</h3>
-          <div className="space-y-3">
+        <Card className="p-6 border-border/40 glass">
+          <div className="mb-5">
+            <h3 className="font-bold text-base text-foreground/90">Weak topics</h3>
+            <p className="text-xs text-muted-foreground/80 mt-0.5">Focus areas based on quiz accuracy</p>
+          </div>
+          <div className="space-y-4">
             {loading ? (
               <>
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
+                <Skeleton className="h-10 w-full bg-muted/40" />
               </>
             ) : weakTopics.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-center text-xs text-muted-foreground py-10 border border-dashed rounded-lg bg-muted/10">
                 No quiz history yet. <Link to="/app/quizzes" className="text-primary underline">Take a quiz</Link>.
               </div>
             ) : weakTopics.map((w) => (
               <div key={w.topic}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium">{w.topic}</span>
-                  <span className="text-muted-foreground">{w.strength}%</span>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-foreground/80">{w.topic}</span>
+                  <span className="text-muted-foreground text-[10px] font-bold">{w.strength}% strength</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full gradient-primary-bg" style={{ width: `${w.strength}%` }} />
+                <div className="h-2 rounded-full bg-muted overflow-hidden border border-border/10 p-0.5">
+                  <div className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-500" style={{ width: `${w.strength}%` }} />
                 </div>
               </div>
             ))}

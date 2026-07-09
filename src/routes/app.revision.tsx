@@ -14,12 +14,12 @@ export const Route = createFileRoute("/app/revision")({ component: RevisionPage 
 type Mode = "notes" | "onepage" | "night" | "formulas" | "definitions" | "faq";
 
 const MODES: { key: Mode; label: string; prompt: (topic: string) => string }[] = [
-  { key: "notes",       label: "Revision Notes",         prompt: (t) => `Create detailed revision notes for: ${t}. Use headings, bullet points and highlight key terms in bold.` },
-  { key: "onepage",     label: "One Page Summary",       prompt: (t) => `Summarise the following into a single page cheat-sheet with clear sections and short bullets:\n\n${t}` },
-  { key: "night",       label: "Night Before Exam",      prompt: (t) => `Give a "night before the exam" recap for: ${t}. Focus only on the highest-yield facts, formulas and pitfalls a student must not forget.` },
-  { key: "formulas",    label: "Important Formulas",     prompt: (t) => `List every important formula relevant to: ${t}. For each formula give: the formula in plain text, what each symbol means, and when to use it.` },
-  { key: "definitions", label: "Important Definitions",  prompt: (t) => `List the most important definitions for: ${t}. Format as "Term — definition" bullets, one per line.` },
-  { key: "faq",         label: "Frequently Asked Qs",    prompt: (t) => `Generate 8-12 frequently asked exam questions on: ${t}, each with a concise model answer.` },
+  { key: "notes", label: "Revision Notes", prompt: (t) => `Create detailed revision notes for: ${t}. Use headings, bullet points and highlight key terms in bold.` },
+  { key: "onepage", label: "One Page Summary", prompt: (t) => `Summarise the following into a single page cheat-sheet with clear sections and short bullets:\n\n${t}` },
+  { key: "night", label: "Night Before Exam", prompt: (t) => `Give a "night before the exam" recap for: ${t}. Focus only on the highest-yield facts, formulas and pitfalls a student must not forget.` },
+  { key: "formulas", label: "Important Formulas", prompt: (t) => `List every important formula relevant to: ${t}. For each formula give: the formula in plain text, what each symbol means, and when to use it.` },
+  { key: "definitions", label: "Important Definitions", prompt: (t) => `List the most important definitions for: ${t}. Format as "Term — definition" bullets, one per line.` },
+  { key: "faq", label: "Frequently Asked Qs", prompt: (t) => `Generate 8-12 frequently asked exam questions on: ${t}, each with a concise model answer.` },
 ];
 
 function RevisionPage() {
@@ -44,8 +44,24 @@ function RevisionPage() {
     setBusy(true);
     try {
       const chosen = MODES.find((m) => m.key === mode)!;
-      const res = await aiService.explain(chosen.prompt(base), "advanced");
-      setNotes(res.explanation);
+      let res: any;
+      if (selectedDoc) {
+        // Use document-aware AI service when a document is selected
+        res = await aiService.explainWithDoc(selectedDoc.id, topic, "advanced");
+      } else {
+        // Fallback to generic explanation using the prompt
+        const prompt = chosen.prompt(base);
+        res = await aiService.explain(prompt, "advanced");
+      }
+      console.log("AI Response:", res);
+      setNotes(
+        res?.explanation ||
+        res?.studyNotes ||
+        res?.response ||
+        res?.content ||
+        res?.text ||
+        ""
+      );
     } catch (e: unknown) {
       toast.error("AI service is temporarily busy. Please try again.");
     } finally {

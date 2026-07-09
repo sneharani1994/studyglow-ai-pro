@@ -23,4 +23,15 @@ export const uploadsService = {
     const res = await api.post<{ file: UploadedFile }>("/api/uploads/upload", undefined, { rawBody: fd });
     return res.file;
   },
-};
+  async delete(id: string): Promise<void> {
+    await api.delete(`/api/uploads/${id}`);
+  },
+  async rename(id: string, filename: string): Promise<UploadedFile> {
+    const res = await api.put<{ file: UploadedFile }>(`/api/uploads/${id}`, { filename });
+    return res.file;
+  },
+  async deleteAll(): Promise<void> {
+    // Delete all by iterating over list
+    const uploads = await uploadsService.list();
+    await Promise.all(uploads.map((u) => uploadsService.delete(u.id)));
+  },};

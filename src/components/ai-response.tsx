@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, Check, RefreshCw, Download, Loader2, AlertCircle } from "lucide-react";
+import { Copy, Check, RefreshCw, Download, Loader2, AlertCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
@@ -116,21 +116,33 @@ export function AIResponse({
   if (!content) return emptyState ? <>{emptyState}</> : null;
 
   return (
-    <Card className={`p-6 ${className ?? ""}`}>
-      <div className="flex items-center justify-end gap-2 mb-4">
-        <Button size="sm" variant="ghost" onClick={copy} title="Copy">
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={exportPdf} title="Export PDF">
-          <Download className="h-4 w-4" />
-        </Button>
-        {onRegenerate && (
-          <Button size="sm" variant="ghost" onClick={onRegenerate} title="Regenerate">
-            <RefreshCw className="h-4 w-4" />
+    <Card className={`overflow-hidden glass border-border/40 shadow-card hover:shadow-glow transition-all duration-300 ${className ?? ""}`}>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 bg-muted/20">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-7 w-7 rounded-lg gradient-primary-bg/10 grid place-items-center text-primary shrink-0">
+            <Sparkles className="h-3.5 w-3.5" />
+          </div>
+          <span className="font-semibold text-xs truncate text-foreground/80">{title ?? "AI Response"}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button size="sm" variant="ghost" onClick={copy} className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60">
+            {copied ? (
+              <><Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> Copied</>
+            ) : (
+              <><Copy className="h-3.5 w-3.5 mr-1" /> Copy</>
+            )}
           </Button>
-        )}
+          <Button size="sm" variant="ghost" onClick={exportPdf} className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60">
+            <Download className="h-3.5 w-3.5 mr-1" /> Export PDF
+          </Button>
+          {onRegenerate && (
+            <Button size="sm" variant="ghost" onClick={onRegenerate} className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerate
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:p-0 prose-pre:bg-transparent">
+      <div className="p-6">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

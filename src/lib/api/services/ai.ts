@@ -12,6 +12,13 @@ export const aiService = {
   generateFlashcards: (topic: string, cardCount = 8): Promise<{
     flashcards: Array<{ front: string; back: string }>;
   }> => api.post("/api/ai/generate-flashcards", { topic, cardCount }),
+  // New method to explain with selected document ID
+  explainWithDoc: (documentId: string, topic: string, level: "beginner" | "intermediate" | "advanced" = "intermediate"): Promise<{ explanation: string }> =>
+    api.post("/api/ai/explain", { documentId, topic, level }),
+
+  // New method to generate study notes with document context
+  generateStudyNotesWithDoc: (documentId: string, topic: string, depth: "standard" | "deep dive" = "standard"): Promise<{ studyNotes: string }> =>
+    api.post("/api/ai/generate-study-notes", { documentId, topic, depth }),
   generateStudyNotes: (topic: string, depth: "standard" | "deep dive" = "standard"): Promise<{ studyNotes: string }> =>
     api.post("/api/ai/generate-study-notes", { topic, depth }),
   homeworkSolver: (problem: string, subject?: string): Promise<{ solution: string }> =>
