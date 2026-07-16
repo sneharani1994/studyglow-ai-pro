@@ -116,11 +116,17 @@ export const authService = {
 
   /** GET /api/auth/google → { url } */
   async googleUrl(): Promise<string> {
-    const res = await api.get<{ url: string }>("/api/auth/google", { skipAuth: true });
+    const redirectTo = `${window.location.origin}/app/dashboard`;
+    const res = await api.get<{ url: string }>("/api/auth/google", {
+      skipAuth: true,
+      query: { redirect_to: redirectTo },
+    });
     return res.url;
   },
 
   /** Direct redirect helper for OAuth buttons. */
-  oauthUrl: (provider: "google" | "github"): string =>
-    `${API_BASE_URL}/api/auth/${provider}`,
+  oauthUrl: (provider: "google" | "github"): string => {
+    const redirectTo = encodeURIComponent(`${window.location.origin}/app/dashboard`);
+    return `${API_BASE_URL}/api/auth/${provider}?redirect_to=${redirectTo}`;
+  },
 };
