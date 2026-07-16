@@ -19,6 +19,7 @@ export interface DashboardStats {
   }>;
   recentChats: Array<{ id: string; title: string; updated_at: string }>;
   flashcardsCount: number;
+  uploadsCount: number;
   plannerProgress: {
     totalTasks: number;
     completedTasks: number;

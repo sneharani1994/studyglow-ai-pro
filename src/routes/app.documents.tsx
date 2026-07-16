@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { Upload, FileText, FileImage, FileType, Trash2, Eye, Search, Filter, Download, Pencil } from "lucide-react";
 import { uploadsService, type UploadedFile } from "@/lib/api";
 import { toast } from "sonner";
+import { emitAppRefresh } from "@/lib/events";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -78,6 +79,7 @@ function DocumentsPage() {
         setUploadProgress((p) => ({ ...p, [f.name]: 100 }));
       }
       await load();
+      emitAppRefresh({ source: "uploads" });
       toast.success("Upload complete");
     } catch (e: any) {
       toast.error(e?.message || "Upload failed");
@@ -295,6 +297,7 @@ function DocumentsPage() {
                   if (duplicateFile) {
                     await uploadsService.upload(duplicateFile);
                     await load();
+                    emitAppRefresh({ source: "uploads" });
                   }
                   setDuplicateOpen(false);
                 }}
@@ -308,6 +311,7 @@ function DocumentsPage() {
                   if (duplicateFile) {
                     await uploadsService.upload(duplicateFile);
                     await load();
+                    emitAppRefresh({ source: "uploads" });
                   }
                   setDuplicateOpen(false);
                 }}
@@ -335,6 +339,7 @@ function DocumentsPage() {
         if (docToDelete) {
           await uploadsService.delete(docToDelete.id);
           await load();
+          emitAppRefresh({ source: "uploads" });
           setDeleteOpen(false);
           toast.success('File deleted');
         }

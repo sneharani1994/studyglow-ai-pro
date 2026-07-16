@@ -301,7 +301,7 @@ function Dashboard() {
   const stats = useMemo(() => [
     {
       label: "Documents",
-      value: data?.recentNotes.length ?? 0,
+      value: data?.uploadsCount ?? 0,
       change: "",
       icon: FileText,
       color: "text-blue-500",

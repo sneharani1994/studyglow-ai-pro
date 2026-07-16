@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { aiService, uploadsService, type UploadedFile } from "@/lib/api";
 import { toast } from "sonner";
+import { emitAppRefresh } from "@/lib/events";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -246,6 +247,7 @@ function RevisionPage() {
         res?.text ||
         "";
       setNotes(resultText);
+      emitAppRefresh({ source: "summaries" });
 
       /* ── History management (duplicate-safe) ── */
       const fp = fingerprint(mode, topic, selectedDoc?.id ?? null);
