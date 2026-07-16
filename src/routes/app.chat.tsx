@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
   Paperclip,
@@ -19,27 +18,21 @@ import {
   Check,
   MessageSquare,
   History as HistoryIcon,
-  FileText,
   Search,
   Pin,
   PinOff,
   Trash2,
   Edit2,
-  X,
-  ChevronRight,
-  BookOpen,
-  Brain,
-  Zap,
-  Star,
-  MoreHorizontal,
   ArrowDown,
-  Image as ImageIcon,
   Bot,
-  User,
   Menu,
   PanelLeftClose,
+  Brain,
+  Zap,
+  BookOpen,
+  Star,
 } from "lucide-react";
-import { chatService, uploadsService, type ChatSession, type ChatMessage } from "@/lib/api";
+import { chatService, uploadsService } from "@/lib/api";
 import { useUser } from "@/lib/auth";
 import { toast } from "sonner";
 import { emitAppRefresh } from "@/lib/events";
@@ -64,6 +57,22 @@ const FOLLOW_UP_CHIPS = [
   "Create flashcards from this",
   "Quiz me on this topic",
 ];
+
+// ── Types for Local Persistence ───────────────────────────────────────────
+interface LocalMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface LocalConversation {
+  id: string;
+  title: string;
+  messages: LocalMessage[];
+  createdAt: string;
+  updatedAt: string;
+  pinned: boolean;
+}
 
 // ── Route ──────────────────────────────────────────────────────────────────
 export const Route = createFileRoute("/app/chat")({
@@ -93,11 +102,56 @@ function ChatPage() {
     .slice(0, 2)
     .toUpperCase();
 
-  // Core state
+  // Core state with synchronous local storage initialization
+  const [localHistory, setLocalHistory] = useState<LocalConversation[]>(() => {
+    if (typeof window === "undefined") return [];
+    const stored = localStorage.getItem("studyglow.chat.history");
+    if (stored) {
+      try {
+        const parsed: LocalConversation[] = JSON.parse(stored);
+        console.log("History loaded:", parsed);
+        return parsed;
+      } catch (e) {
+        console.warn("Failed to load local chat history", e);
+      }
+    }
+    return [];
+  });
+
+  const [activeId, setActiveId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const storedActiveId = localStorage.getItem(ACTIVE_SESSION_KEY);
+    if (storedActiveId) {
+      const storedHistory = localStorage.getItem("studyglow.chat.history");
+      if (storedHistory) {
+        try {
+          const parsed: LocalConversation[] = JSON.parse(storedHistory);
+          if (parsed.some((x) => x.id === storedActiveId)) {
+            console.log("Active conversation restored:", storedActiveId);
+            return storedActiveId;
+          }
+        } catch {}
+      }
+    }
+    
+    // Fallback: restore latest conversation
+    const storedHistory = localStorage.getItem("studyglow.chat.history");
+    if (storedHistory) {
+      try {
+        const parsed: LocalConversation[] = JSON.parse(storedHistory);
+        if (parsed.length > 0) {
+          const sorted = [...parsed].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+          console.log("Active conversation restored:", sorted[0].id);
+          return sorted[0].id;
+        }
+      } catch {}
+    }
+    return null;
+  });
+
   const [input, setInput] = useState("");
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
@@ -116,42 +170,36 @@ function ChatPage() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const sendingRef = useRef(false);
+  const isFirstRender = useRef(true);
 
-  // ── Load sessions ────────────────────────────────────────────────────────
+  // ── Persist Active Session ID ────────────────────────────────────────────
   useEffect(() => {
-    chatService
-      .listSessions({ recent: true })
-      .then((s) => {
-        setSessions(s);
-        const stored =
-          typeof window !== "undefined"
-            ? window.localStorage.getItem(ACTIVE_SESSION_KEY)
-            : null;
-        const match = stored && s.find((x) => x.id === stored);
-        if (match) setActiveId(match.id);
-        else if (s.length) setActiveId(s[0].id);
-      })
-      .catch(() => setSessions([]));
-  }, []);
-
-  // ── Load messages when session changes ───────────────────────────────────
-  useEffect(() => {
-    if (!activeId) {
-      setMessages([]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
-    try {
-      window.localStorage.setItem(ACTIVE_SESSION_KEY, activeId);
-    } catch {
-      /* ignore */
+    if (activeId) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, activeId);
+    } else {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
     }
-    chatService
-      .listMessages(activeId)
-      .then(setMessages)
-      .catch(() => setMessages([]));
   }, [activeId]);
 
+  // ── Helper to Save History ───────────────────────────────────────────────
+  const saveToLocalStorage = (historyList: LocalConversation[]) => {
+    localStorage.setItem("studyglow.chat.history", JSON.stringify(historyList));
+    console.log("History saved:", historyList);
+  };
+
   // ── Auto-scroll to newest message ────────────────────────────────────────
+  const activeConv = useMemo(() => {
+    return localHistory.find((c) => c.id === activeId) || null;
+  }, [localHistory, activeId]);
+
+  const messages = useMemo(() => {
+    return activeConv?.messages ?? [];
+  }, [activeConv]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -171,36 +219,26 @@ function ChatPage() {
     return () => el.removeEventListener("scroll", handleScroll);
   }, [messages.length]);
 
-  // ── Derived data ─────────────────────────────────────────────────────────
-  const active = sessions.find((s) => s.id === activeId);
-
-  const pinnedSessions = useMemo(
-    () => sessions.filter((s) => s.is_pinned),
-    [sessions]
-  );
-
+  // ── Derived data for sidebar ─────────────────────────────────────────────
   const filteredSessions = useMemo(() => {
-    if (!sidebarSearch.trim()) return sessions;
+    if (!sidebarSearch.trim()) return localHistory;
     const q = sidebarSearch.toLowerCase();
-    return sessions.filter((s) => s.title.toLowerCase().includes(q));
-  }, [sessions, sidebarSearch]);
+    return localHistory.filter((s) => s.title.toLowerCase().includes(q));
+  }, [localHistory, sidebarSearch]);
 
   const unpinnedSessions = useMemo(
-    () => filteredSessions.filter((s) => !s.is_pinned),
+    () => filteredSessions.filter((s) => !s.pinned),
     [filteredSessions]
   );
 
   const filteredPinned = useMemo(
-    () => filteredSessions.filter((s) => s.is_pinned),
+    () => filteredSessions.filter((s) => s.pinned),
     [filteredSessions]
   );
 
   // ── New chat ─────────────────────────────────────────────────────────────
-  const newChat = async () => {
-    const s = await chatService.createSession("New chat");
-    setSessions((prev) => [s, ...prev]);
-    setActiveId(s.id);
-    emitAppRefresh({ source: "chat" });
+  const newChat = () => {
+    setActiveId(null);
     setShowSidebar(false);
   };
 
@@ -212,42 +250,85 @@ function ChatPage() {
     let sid = activeId;
     setInput("");
     setSending(true);
-    const optimistic: ChatMessage = {
-      id: `local-${Date.now()}`,
-      session_id: sid ?? "pending",
-      sender: "user",
+
+    const nowStr = new Date().toISOString();
+    const userMsg: LocalMessage = {
+      role: "user",
       content: text,
-      created_at: new Date().toISOString(),
+      timestamp: nowStr,
     };
-    setMessages((prev) => [...prev, optimistic]);
+
     try {
       if (!sid) {
+        // Create session on backend to get a unique database-bound ID
         const s = await chatService.createSession(text.slice(0, 60));
         sid = s.id;
         setActiveId(sid);
-        setSessions((prev) => [s, ...prev]);
+
+        const newConv: LocalConversation = {
+          id: sid,
+          title: text.slice(0, 60),
+          messages: [userMsg],
+          createdAt: nowStr,
+          updatedAt: nowStr,
+          pinned: false,
+        };
+
+        const updatedHistory = [newConv, ...localHistory].slice(0, 20);
+        setLocalHistory(updatedHistory);
+        saveToLocalStorage(updatedHistory);
+      } else {
+        // Append user message to local active conversation
+        const updatedHistory = localHistory.map((c) => {
+          if (c.id === sid) {
+            return {
+              ...c,
+              messages: [...c.messages, userMsg],
+              updatedAt: nowStr,
+            };
+          }
+          return c;
+        });
+        setLocalHistory(updatedHistory);
+        saveToLocalStorage(updatedHistory);
       }
-      const { userMessage, aiMessage } = await chatService.sendMessage(
-        sid,
-        text
-      );
-      setMessages((prev) => [
-        ...prev.filter((m) => m.id !== optimistic.id),
-        userMessage,
-        aiMessage,
-      ]);
+
+      // Trigger AI generation
+      const { aiMessage } = await chatService.sendMessage(sid, text);
+
+      const aiMsg: LocalMessage = {
+        role: "assistant",
+        content: aiMessage.content,
+        timestamp: aiMessage.created_at || new Date().toISOString(),
+      };
+
+      // Append AI response to local history
+      setLocalHistory((prev) => {
+        const updated = prev.map((c) => {
+          if (c.id === sid) {
+            return {
+              ...c,
+              messages: [...c.messages, aiMsg],
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return c;
+        });
+        saveToLocalStorage(updated);
+        return updated;
+      });
+
       emitAppRefresh({ source: "chat" });
     } catch (e: any) {
       toast.error(e?.message || "Failed to send message");
       setInput(text);
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
     } finally {
       setSending(false);
       sendingRef.current = false;
     }
-  }, [input, activeId]);
+  }, [input, activeId, localHistory]);
 
-  // ── File upload ──────────────────────────────────────────────────────────
+  // ── File upload context ──────────────────────────────────────────────────
   const openFilePicker = () => fileInputRef.current?.click();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,18 +340,58 @@ function ChatPage() {
       const uploaded = await uploadsService.upload(file);
       toast.success(`Uploaded ${file.name}`);
       let sid = activeId;
+      const nowStr = new Date().toISOString();
+
       if (!sid) {
         const s = await chatService.createSession(file.name.slice(0, 60));
         sid = s.id;
         setActiveId(sid);
-        setSessions((prev) => [s, ...prev]);
       }
+
       const contextMsg = `📎 I've uploaded a document: "${uploaded.filename}". Please use this document as context for our conversation. Ask me what I want to know about it.`;
-      const { userMessage, aiMessage } = await chatService.sendMessage(
-        sid,
-        contextMsg
-      );
-      setMessages((prev) => [...prev, userMessage, aiMessage]);
+      const { userMessage, aiMessage } = await chatService.sendMessage(sid, contextMsg);
+
+      const userMsg: LocalMessage = {
+        role: "user",
+        content: contextMsg,
+        timestamp: userMessage.created_at || nowStr,
+      };
+
+      const aiMsg: LocalMessage = {
+        role: "assistant",
+        content: aiMessage.content,
+        timestamp: aiMessage.created_at || nowStr,
+      };
+
+      setLocalHistory((prev) => {
+        const existing = prev.find((c) => c.id === sid);
+        let updated;
+        if (existing) {
+          updated = prev.map((c) => {
+            if (c.id === sid) {
+              return {
+                ...c,
+                messages: [...c.messages, userMsg, aiMsg],
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return c;
+          });
+        } else {
+          const newConv: LocalConversation = {
+            id: sid!,
+            title: file.name.slice(0, 60),
+            messages: [userMsg, aiMsg],
+            createdAt: nowStr,
+            updatedAt: nowStr,
+            pinned: false,
+          };
+          updated = [newConv, ...prev].slice(0, 20);
+        }
+        saveToLocalStorage(updated);
+        return updated;
+      });
+
       emitAppRefresh({ source: "uploads" });
     } catch (err: any) {
       toast.error(err?.message || "Upload failed");
@@ -322,7 +443,7 @@ function ChatPage() {
     }
   };
 
-  // ── Session management ───────────────────────────────────────────────────
+  // ── Session persistence updates ──────────────────────────────────────────
   const handleRename = async (id: string) => {
     const trimmed = renameValue.trim();
     if (!trimmed) {
@@ -330,10 +451,17 @@ function ChatPage() {
       return;
     }
     try {
-      const updated = await chatService.updateSession(id, { title: trimmed });
-      setSessions((prev) =>
-        prev.map((s) => (s.id === id ? updated : s))
-      );
+      // Keep backend session title updated in background
+      chatService.updateSession(id, { title: trimmed }).catch(() => {});
+
+      const updated = localHistory.map((s) => {
+        if (s.id === id) {
+          return { ...s, title: trimmed, updatedAt: new Date().toISOString() };
+        }
+        return s;
+      });
+      setLocalHistory(updated);
+      saveToLocalStorage(updated);
       toast.success("Conversation renamed");
     } catch {
       toast.error("Failed to rename");
@@ -344,11 +472,14 @@ function ChatPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this conversation? This cannot be undone.")) return;
     try {
-      await chatService.deleteSession(id);
-      setSessions((prev) => prev.filter((s) => s.id !== id));
+      // Keep backend synchronized in background
+      chatService.deleteSession(id).catch(() => {});
+
+      const updated = localHistory.filter((s) => s.id !== id);
+      setLocalHistory(updated);
+      saveToLocalStorage(updated);
       if (activeId === id) {
-        const remaining = sessions.filter((s) => s.id !== id);
-        setActiveId(remaining.length ? remaining[0].id : null);
+        setActiveId(updated.length ? updated[0].id : null);
       }
       toast.success("Conversation deleted");
     } catch {
@@ -356,17 +487,24 @@ function ChatPage() {
     }
   };
 
-  const handlePin = async (session: ChatSession) => {
+  const handlePin = async (session: LocalConversation) => {
     try {
-      const updated = await chatService.updateSession(session.id, {
-        isPinned: !session.is_pinned,
+      // Keep backend synchronized in background
+      chatService
+        .updateSession(session.id, { isPinned: !session.pinned })
+        .catch(() => {});
+
+      const updated = localHistory.map((s) => {
+        if (s.id === session.id) {
+          return { ...s, pinned: !s.pinned, updatedAt: new Date().toISOString() };
+        }
+        return s;
       });
-      setSessions((prev) =>
-        prev.map((s) => (s.id === session.id ? updated : s))
-      );
-      toast.success(updated.is_pinned ? "Pinned" : "Unpinned");
+      setLocalHistory(updated);
+      saveToLocalStorage(updated);
+      toast.success(session.pinned ? "Unpinned" : "Pinned");
     } catch {
-      toast.error("Failed to update");
+      toast.error("Failed to update pin state");
     }
   };
 
@@ -388,7 +526,7 @@ function ChatPage() {
     });
   };
 
-  // ── Format time ──────────────────────────────────────────────────────────
+  // ── Format time ago ──────────────────────────────────────────────────────
   const formatTime = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
@@ -405,8 +543,16 @@ function ChatPage() {
     }
   };
 
+  const handleClearHistory = () => {
+    if (!confirm("Clear all conversations from local storage? This cannot be undone.")) return;
+    setLocalHistory([]);
+    localStorage.removeItem("studyglow.chat.history");
+    setActiveId(null);
+    toast.success("History cleared");
+  };
+
   // ── Sidebar session item ─────────────────────────────────────────────────
-  const SessionItem = ({ c }: { c: ChatSession }) => {
+  const SessionItem = ({ c }: { c: LocalConversation }) => {
     const isSelected = activeId === c.id;
     const isRenaming = renamingId === c.id;
 
@@ -447,12 +593,12 @@ function ChatPage() {
             />
           ) : (
             <>
-              <div className="truncate text-xs font-medium flex items-center gap-1">
-                {c.is_pinned && <Pin className="h-2.5 w-2.5 text-primary shrink-0" />}
+              <div className="truncate text-xs font-medium flex items-center gap-1 pr-6">
+                {c.pinned && <Pin className="h-2.5 w-2.5 text-primary shrink-0" />}
                 {c.title}
               </div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5">
-                {formatTime(c.updated_at)}
+                {formatTime(c.updatedAt)}
               </div>
             </>
           )}
@@ -482,9 +628,9 @@ function ChatPage() {
                 e.stopPropagation();
                 handlePin(c);
               }}
-              title={c.is_pinned ? "Unpin" : "Pin"}
+              title={c.pinned ? "Unpin" : "Pin"}
             >
-              {c.is_pinned ? (
+              {c.pinned ? (
                 <PinOff className="h-3 w-3" />
               ) : (
                 <Pin className="h-3 w-3" />
@@ -574,7 +720,7 @@ function ChatPage() {
 
         {/* Session List */}
         <ScrollArea className="flex-1 p-2">
-          {sessions.length === 0 ? (
+          {localHistory.length === 0 ? (
             <div className="text-center py-12 px-4">
               <div className="h-10 w-10 rounded-xl bg-muted/40 grid place-items-center mx-auto text-muted-foreground/50 mb-3">
                 <MessageSquare className="h-5 w-5" />
@@ -621,6 +767,19 @@ function ChatPage() {
             </div>
           )}
         </ScrollArea>
+
+        {localHistory.length > 0 && (
+          <div className="p-3 border-t border-border/20">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearHistory}
+              className="w-full text-xs text-muted-foreground hover:text-rose-500 hover:bg-rose-500/5 h-8 font-semibold"
+            >
+              Clear Chat History
+            </Button>
+          </div>
+        )}
       </aside>
 
       {/* ═══════════ MAIN CHAT AREA ═══════════ */}
@@ -640,7 +799,7 @@ function ChatPage() {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-bold text-foreground truncate">
-              {active?.title ?? "New conversation"}
+              {activeConv?.title ?? "New conversation"}
             </h2>
             <p className="text-[10px] text-muted-foreground/70">
               {messages.length > 0
@@ -648,16 +807,16 @@ function ChatPage() {
                 : "Start chatting with StudyGlow AI"}
             </p>
           </div>
-          {active && (
+          {activeConv && (
             <div className="flex items-center gap-1 shrink-0">
               <Button
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 rounded-lg"
-                onClick={() => handlePin(active)}
-                title={active.is_pinned ? "Unpin" : "Pin"}
+                onClick={() => handlePin(activeConv)}
+                title={activeConv.pinned ? "Unpin" : "Pin"}
               >
-                {active.is_pinned ? (
+                {activeConv.pinned ? (
                   <PinOff className="h-3.5 w-3.5 text-primary" />
                 ) : (
                   <Pin className="h-3.5 w-3.5" />
@@ -667,7 +826,7 @@ function ChatPage() {
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 rounded-lg hover:bg-rose-500/10 hover:text-rose-500"
-                onClick={() => handleDelete(active.id)}
+                onClick={() => handleDelete(activeConv.id)}
                 title="Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -742,11 +901,12 @@ function ChatPage() {
             ) : (
               /* ═══════════ MESSAGE LIST ═══════════ */
               <>
-                {messages.map((m) => {
-                  const isUser = m.sender === "user";
+                {messages.map((m, idx) => {
+                  const isUser = m.role === "user";
+                  const msgId = `msg-${idx}-${m.timestamp}`;
                   return (
                     <motion.div
-                      key={m.id}
+                      key={msgId}
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25 }}
@@ -819,7 +979,7 @@ function ChatPage() {
                                                   text
                                                 );
                                                 setCopiedId(
-                                                  m.id + text.slice(0, 10)
+                                                  msgId + text.slice(0, 10)
                                                 );
                                                 toast.success("Code copied");
                                                 setTimeout(
@@ -829,7 +989,7 @@ function ChatPage() {
                                               }}
                                             >
                                               {copiedId ===
-                                              m.id + text.slice(0, 10) ? (
+                                              msgId + text.slice(0, 10) ? (
                                                 <>
                                                   <Check className="h-3 w-3 mr-1 text-emerald-400" />{" "}
                                                   Copied
@@ -937,18 +1097,18 @@ function ChatPage() {
                               variant="ghost"
                               className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground"
                               onClick={() =>
-                                handleCopyMessage(m.content, m.id)
+                                handleCopyMessage(m.content, msgId)
                               }
                             >
-                              {copiedId === m.id ? (
+                              {copiedId === msgId ? (
                                 <Check className="h-3 w-3 mr-1 text-emerald-500" />
                               ) : (
                                 <Copy className="h-3 w-3 mr-1" />
                               )}
-                              {copiedId === m.id ? "Copied" : "Copy"}
+                              {copiedId === msgId ? "Copied" : "Copy"}
                             </Button>
                             <span className="text-[9px] text-muted-foreground/50">
-                              {formatTime(m.created_at)}
+                              {formatTime(m.timestamp)}
                             </span>
                           </div>
                         )}
@@ -957,7 +1117,7 @@ function ChatPage() {
                         {isUser && (
                           <div className="text-right mt-1">
                             <span className="text-[9px] text-muted-foreground/50">
-                              {formatTime(m.created_at)}
+                              {formatTime(m.timestamp)}
                             </span>
                           </div>
                         )}
@@ -1016,7 +1176,7 @@ function ChatPage() {
                 {/* ═══════════ FOLLOW-UP CHIPS ═══════════ */}
                 {messages.length > 0 &&
                   !sending &&
-                  messages[messages.length - 1]?.sender === "ai" && (
+                  messages[messages.length - 1]?.role === "assistant" && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
