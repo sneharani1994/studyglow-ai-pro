@@ -668,8 +668,8 @@ function QuizzesPage() {
                         dotIdx === currentIdx
                           ? "w-6 bg-primary"
                           : answers[active.questions[dotIdx].id] !== undefined
-                          ? "w-2 bg-primary/40"
-                          : "w-2 bg-muted-foreground/20"
+                            ? "w-2 bg-primary/40"
+                            : "w-2 bg-muted-foreground/20"
                       )}
                       title={`Go to Question ${dotIdx + 1}`}
                     />
