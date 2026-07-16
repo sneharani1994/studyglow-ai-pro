@@ -51,7 +51,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/app/mood")({ component: MoodPage });
 
 // ── Original mood constants (preserved exactly) ────────────────────────────
-type Action = { label: string; to: string };
+type Action = { label: string; to: any };
 const moods = [
   {
     emoji: "😊",

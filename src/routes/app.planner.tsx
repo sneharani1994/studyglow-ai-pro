@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,18 @@ import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/app/planner")({ component: PlannerPage });
+type PlannerSearch = {
+  tab?: string;
+};
+
+export const Route = createFileRoute("/app/planner")({
+  component: PlannerPage,
+  validateSearch: (search: Record<string, unknown>): PlannerSearch => {
+    return {
+      tab: typeof search.tab === "string" ? search.tab : undefined,
+    };
+  },
+});
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dayGradients = [
@@ -154,6 +165,8 @@ const phaseConnectors = [
 ];
 
 function PlannerPage() {
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate();
   // Main Data States (cached for instant load)
   const [tasks, setTasks] = useState<PlannerTask[]>(() => {
     try {
@@ -190,7 +203,7 @@ function PlannerPage() {
   const [roadmapWeeks, setRoadmapWeeks] = useState(4);
 
   // Active Layout / UI state
-  const [activeTab, setActiveTab] = useState<string>("calendar");
+  const [activeTab, setActiveTab] = useState<string>(tab || "calendar");
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
   const [hideCompletedTasks, setHideCompletedTasks] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<string>(() => {
@@ -304,8 +317,12 @@ function PlannerPage() {
         }
       }
 
-      const savedTab = localStorage.getItem(TAB_PERSIST_KEY);
-      if (savedTab) setActiveTab(savedTab);
+      if (tab) {
+        setActiveTab(tab);
+      } else {
+        const savedTab = localStorage.getItem(TAB_PERSIST_KEY);
+        if (savedTab) setActiveTab(savedTab);
+      }
 
       const savedCollapsed = localStorage.getItem(COLLAPSE_PERSIST_KEY);
       if (savedCollapsed) setCollapsedWeeks(JSON.parse(savedCollapsed));
@@ -317,7 +334,13 @@ function PlannerPage() {
     }
   }, []);
 
-  // Sync state to localstorage
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
+
+  // Sync state to localstorage and URL
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -331,7 +354,12 @@ function PlannerPage() {
 
   useEffect(() => {
     localStorage.setItem(TAB_PERSIST_KEY, activeTab);
-  }, [activeTab]);
+    navigate({
+      to: "/app/planner",
+      search: { tab: activeTab },
+      replace: true,
+    });
+  }, [activeTab, navigate]);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_PERSIST_KEY, JSON.stringify(collapsedWeeks));
