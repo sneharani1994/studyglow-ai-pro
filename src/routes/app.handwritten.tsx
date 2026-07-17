@@ -77,6 +77,7 @@ function HandwrittenPage() {
   const [viewMode, setViewMode] = useState<"raw" | "formatted">("formatted");
   const [isMonospace, setIsMonospace] = useState(false);
   const [processingTimes, setProcessingTimes] = useState<Record<string, string>>({});
+  const [isTextFullscreen, setIsTextFullscreen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -108,9 +109,13 @@ function HandwrittenPage() {
     }
   }, []);
 
-  // Keyboard Shortcuts accessibility (Ctrl+C, Ctrl+S)
+  // Keyboard Shortcuts accessibility (Ctrl+C, Ctrl+S, Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsFullscreen(false);
+        setIsTextFullscreen(false);
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
@@ -545,14 +550,29 @@ function HandwrittenPage() {
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
-  // Suspected OCR Typo highlights
+  // Suspected OCR Typo highlights and Document Formatter
   const renderFormattedText = (text: string) => {
     if (!text) return null;
-    const paragraphs = text.split("\n\n").filter((p) => p.trim() !== "");
-    return paragraphs.map((para, pIdx) => {
-      const isHeading = para.length < 60 && (para === para.toUpperCase() || para.trim().endsWith(":"));
-      const words = para.split(/(\s+)/);
-      const elements = words.map((word, wIdx) => {
+
+    const lines = text.split("\n");
+    const formattedBlocks: React.ReactNode[] = [];
+    let currentList: React.ReactNode[] = [];
+    let listKey = 0;
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        formattedBlocks.push(
+          <ul key={`list-${listKey++}`} className="list-disc pl-6 my-3 space-y-1.5 text-sm text-muted-foreground select-text">
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+      }
+    };
+
+    const processTextWithErrors = (wordText: string) => {
+      const words = wordText.split(/(\s+)/);
+      return words.map((word, wIdx) => {
         const isSuspicious = /^[a-zA-Z]+[0-9]+[a-zA-Z]*|[0-9]+[a-zA-Z]+[0-9]*$/.test(word) || 
                              (word.length > 3 && !/^[a-zA-Z]+[.,!?;:]*$/.test(word) && /[^a-zA-Z0-9.,!?;:]/.test(word));
         
@@ -560,29 +580,74 @@ function HandwrittenPage() {
           return (
             <span
               key={wIdx}
-              className="bg-amber-200/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-b border-dashed border-amber-500 cursor-help px-0.5 rounded"
+              className="bg-amber-200/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-b border-dashed border-amber-500 cursor-help px-0.5 rounded select-text"
               title="This word may be incorrectly recognized."
             >
               {word}
             </span>
           );
         }
-        return <span key={wIdx}>{word}</span>;
+        return <span key={wIdx} className="select-text">{word}</span>;
       });
+    };
 
-      if (isHeading) {
-        return (
-          <h3 key={pIdx} className="text-base font-bold text-foreground mt-4 mb-2">
-            {elements}
-          </h3>
-        );
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Empty line
+      if (line === "") {
+        flushList();
+        formattedBlocks.push(<div key={`br-${i}`} className="h-3" />);
+        continue;
       }
-      return (
-        <p key={pIdx} className="text-sm text-muted-foreground leading-relaxed mb-3">
-          {elements}
+
+      // Check for headings
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      const isAllCapHeading = line.length < 80 && line.length > 2 && line === line.toUpperCase() && !/^[0-9\s.,!?;:-]+$/.test(line);
+      
+      if (headingMatch || isAllCapHeading) {
+        flushList();
+        const level = headingMatch ? headingMatch[1].length : 3;
+        const headingText = headingMatch ? headingMatch[2] : line;
+        
+        const headingClasses = cn(
+          "font-bold text-foreground mt-6 mb-3 tracking-tight select-text",
+          level === 1 && "text-2xl border-b pb-1.5",
+          level === 2 && "text-xl",
+          level >= 3 && "text-lg"
+        );
+
+        formattedBlocks.push(
+          <div key={`h-${i}`} className={headingClasses}>
+            {processTextWithErrors(headingText)}
+          </div>
+        );
+        continue;
+      }
+
+      // Check for lists
+      const listMatch = line.match(/^([*\-•]|\d+\.)\s+(.*)$/);
+      if (listMatch) {
+        const itemContent = listMatch[2];
+        currentList.push(
+          <li key={`li-${i}`} className="leading-relaxed select-text">
+            {processTextWithErrors(itemContent)}
+          </li>
+        );
+        continue;
+      }
+
+      // Regular line
+      flushList();
+      formattedBlocks.push(
+        <p key={`p-${i}`} className="text-sm text-muted-foreground leading-relaxed mb-2.5 select-text">
+          {processTextWithErrors(line)}
         </p>
       );
-    });
+    }
+    
+    flushList();
+    return formattedBlocks;
   };
 
   return (
@@ -853,7 +918,6 @@ function HandwrittenPage() {
                 </div>
               )}
 
-              {/* Primary action trigger buttons */}
               {activeItem.file.size > 0 && activeItem.status !== "reading" && (
                 <div className="mt-4 flex gap-2">
                   <Button
@@ -876,8 +940,15 @@ function HandwrittenPage() {
             </Card>
 
             {/* RIGHT PANEL: OCR Result Screen */}
-            <Card className="glass border-border/40 p-5 flex flex-col justify-between shadow-sm h-full">
-              <div className="space-y-4">
+            <Card 
+              className={cn(
+                "transition-all duration-300 flex flex-col justify-between shadow-sm",
+                isTextFullscreen 
+                  ? "fixed inset-4 z-50 bg-background/95 p-6 border-2 border-border/80 shadow-2xl overflow-hidden h-[calc(100vh-2rem)]" 
+                  : "glass border-border/40 p-5 h-full"
+              )}
+            >
+              <div className="space-y-4 flex-1 flex flex-col min-h-0">
                 
                 {/* 1. OCR Status Card */}
                 {activeItem.status === "done" && (
@@ -917,42 +988,122 @@ function HandwrittenPage() {
                   </div>
                 )}
 
-                {/* 2. Format / Viewer toggles */}
-                <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                  <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                    <ScanLine className="h-4 w-4 text-primary animate-pulse" /> OCR Results Workspace
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs">
-                    {/* View Modes */}
-                    <div className="flex border rounded-lg overflow-hidden bg-background/50">
-                      <button
-                        onClick={() => setViewMode("formatted")}
-                        className={cn("px-2.5 py-1 text-[10px] font-bold border-r cursor-pointer", viewMode === "formatted" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                {/* 2. Format / Viewer toggles & Sticky Action Toolbar */}
+                <div className="sticky top-0 z-20 bg-card border-b border-border/40 pb-3 mb-2 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                      <ScanLine className="h-4.5 w-4.5 text-primary animate-pulse" /> OCR Results Workspace
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 text-xs">
+                      {/* View Modes */}
+                      <div className="flex border rounded-lg overflow-hidden bg-background/50">
+                        <button
+                          onClick={() => setViewMode("formatted")}
+                          className={cn("px-2.5 py-1.5 text-[10px] font-bold border-r cursor-pointer transition-colors", viewMode === "formatted" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                        >
+                          Formatted Text
+                        </button>
+                        <button
+                          onClick={() => setViewMode("raw")}
+                          className={cn("px-2.5 py-1.5 text-[10px] font-bold cursor-pointer transition-colors", viewMode === "raw" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                        >
+                          Raw Editor
+                        </button>
+                      </div>
+
+                      {/* Monospace Font Toggle */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsMonospace(!isMonospace)}
+                        className={cn("h-8 w-8 rounded-lg transition-all", isMonospace ? "bg-primary/10 text-primary" : "text-muted-foreground")}
+                        title="Toggle Monospace Font"
                       >
-                        Formatted Text
-                      </button>
-                      <button
-                        onClick={() => setViewMode("raw")}
-                        className={cn("px-2.5 py-1 text-[10px] font-bold cursor-pointer", viewMode === "raw" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                        <FileCode className="h-4 w-4" />
+                      </Button>
+
+                      {/* Full Screen Reading Mode Toggle */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsTextFullscreen(!isTextFullscreen)}
+                        className={cn("h-8 w-8 rounded-lg text-muted-foreground transition-all", isTextFullscreen ? "bg-primary/10 text-primary" : "")}
+                        title="Toggle Full Screen Reading Mode"
                       >
-                        Raw Editor
-                      </button>
+                        {isTextFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                      </Button>
                     </div>
-                    {/* Monospace font toggle */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsMonospace(!isMonospace)}
-                      className={cn("h-7 w-7 rounded-lg", isMonospace ? "bg-primary/10 text-primary" : "text-muted-foreground")}
-                      title="Toggle Monospace Font"
-                    >
-                      <FileCode className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
+
+                  {activeItem.text && (
+                    <div className="flex flex-wrap gap-1.5 justify-between items-center pt-1 border-t border-border/20">
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyText}
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Copy text to clipboard (Ctrl+C)"
+                        >
+                          {copied ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                          Copy
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={downloadTxt}
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Download raw plain text file"
+                        >
+                          <Download className="h-3.5 w-3.5 mr-1" /> TXT
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={downloadMarkdown}
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Download structured markdown document"
+                        >
+                          <Download className="h-3.5 w-3.5 mr-1" /> MD
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={exportPdf}
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Export document layout as PDF"
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+                        </Button>
+                      </div>
+
+                      <div className="flex gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs font-semibold text-primary hover:bg-primary/5 cursor-pointer"
+                          title="Try another OCR configuration for better handwriting recognition."
+                        >
+                          Improve OCR
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={saveNote}
+                          className="h-8 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-bold cursor-pointer"
+                          title="Save note to history (Ctrl+S)"
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1" /> Save
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* 3. Extracted text block / document previewer */}
-                <div className="min-h-[220px]">
+                {/* 3. Extracted text block / document previewer (Scrollable, single scrollbar) */}
+                <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
                   {activeItem.status === "reading" ? (
                     <div className="space-y-3 py-4 text-left">
                       <Skeleton className="h-4 w-full" />
@@ -961,23 +1112,32 @@ function HandwrittenPage() {
                     </div>
                   ) : activeItem.text ? (
                     viewMode === "raw" ? (
-                      <div className="space-y-1.5 text-left">
+                      <div className="flex-1 flex flex-col min-h-0">
                         <Textarea
-                          rows={11}
                           value={activeItem.text}
                           onChange={(e) => updateUploadItem(activeItem.id, { text: e.target.value })}
-                          className={cn("text-xs leading-relaxed bg-background/40 font-medium resize-y", isMonospace ? "font-mono" : "font-sans")}
+                          className={cn(
+                            "flex-1 text-sm leading-relaxed bg-background/40 font-medium resize-y w-full p-4 select-text font-mono border rounded-xl",
+                            isMonospace ? "font-mono" : "font-sans",
+                            isTextFullscreen ? "min-h-[500px]" : "min-h-[400px]"
+                          )}
                           placeholder="Extracted text. Feel free to edit to correct typos..."
                         />
-                        <span className="text-[10px] text-muted-foreground block text-right">Editable text area</span>
+                        <span className="text-[10px] text-muted-foreground block text-right mt-1.5">Editable text area</span>
                       </div>
                     ) : (
-                      <div className={cn("border rounded-xl p-4 bg-background/30 text-left max-h-[300px] overflow-y-auto custom-scrollbar whitespace-pre-wrap font-medium", isMonospace ? "font-mono" : "font-sans")}>
+                      <div 
+                        className={cn(
+                          "border rounded-xl p-6 bg-background/30 text-left overflow-y-auto custom-scrollbar whitespace-pre-wrap font-medium select-text flex-1",
+                          isMonospace ? "font-mono" : "font-sans",
+                          isTextFullscreen ? "min-h-[500px]" : "min-h-[400px]"
+                        )}
+                      >
                         {renderFormattedText(activeItem.text)}
                       </div>
                     )
                   ) : (
-                    <div className="text-center py-12 text-xs text-muted-foreground italic bg-muted/10 border border-dashed rounded-xl">
+                    <div className="text-center py-12 text-xs text-muted-foreground italic bg-muted/10 border border-dashed rounded-xl flex-1 flex items-center justify-center">
                       No text extracted. Click "Extract Text" on the left panel to begin.
                     </div>
                   )}
@@ -985,7 +1145,7 @@ function HandwrittenPage() {
 
                 {/* 4. Side statistics/meta panel */}
                 {activeItem.status === "done" && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3.5 bg-muted/20 border rounded-xl text-left">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3.5 bg-muted/20 border rounded-xl text-left shrink-0">
                     <div className="space-y-0.5">
                       <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Language</span>
                       <p className="text-xs font-semibold text-foreground">English (eng)</p>
@@ -1014,75 +1174,10 @@ function HandwrittenPage() {
                 )}
               </div>
 
-              {/* Sticky bottom actions / Export and Downstream options */}
+              {/* 5. AI study workflows generation */}
               {activeItem.text && (
-                <div className="mt-6 border-t border-border/40 pt-4 space-y-4">
-                  {/* Action row A: Downloader and Copier */}
-                  <div className="flex flex-wrap gap-1.5 justify-between items-center">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyText}
-                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                        title="Copy text to clipboard"
-                      >
-                        {copied ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadTxt}
-                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                        title="Download raw plain text file"
-                      >
-                        <Download className="h-3.5 w-3.5 mr-1" /> TXT
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadMarkdown}
-                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                        title="Download structured markdown document"
-                      >
-                        <Download className="h-3.5 w-3.5 mr-1" /> MD
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportPdf}
-                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                        title="Export document layout as PDF"
-                      >
-                        <FileText className="h-3.5 w-3.5 mr-1" /> PDF
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2.5 text-xs font-semibold text-primary hover:bg-primary/5 cursor-pointer"
-                        title="Try another OCR configuration for better handwriting recognition."
-                      >
-                        Improve OCR
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={saveNote}
-                        className="h-8 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-bold cursor-pointer"
-                        title="Save note to history"
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" /> Save
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Action row B: AI study workflows generation */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/30">
+                <div className="mt-4 border-t border-border/30 pt-3 shrink-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <Button
                       size="sm"
                       variant="secondary"
