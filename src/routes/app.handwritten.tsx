@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { performOcr } from "@/lib/ocr.functions";
 
 export const Route = createFileRoute("/app/handwritten")({
   component: HandwrittenPage,
@@ -34,6 +35,7 @@ interface UploadItem {
   confidence: number | null;
   status: "idle" | "reading" | "done" | "error";
   error?: string;
+  ocrEngine?: string;
 }
 
 interface SavedNote {
@@ -47,6 +49,53 @@ interface SavedNote {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const HISTORY_STORAGE_KEY = "studyglow.handwritten.history";
+const MAX_IMAGE_DIMENSION = 3000;
+
+/**
+ * Convert an image File to base64, resizing if any dimension exceeds MAX_IMAGE_DIMENSION.
+ * This keeps the payload small for the Gemini Vision API.
+ */
+async function fileToBase64(
+  file: File,
+  maxDim = MAX_IMAGE_DIMENSION,
+): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+
+        // Resize if either dimension exceeds the cap
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context unavailable"));
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputMime =
+          file.type === "image/png" ? "image/png" : "image/jpeg";
+        const quality = file.type === "image/png" ? undefined : 0.9;
+        const dataUrl = canvas.toDataURL(outputMime, quality);
+
+        // Strip the data-URL prefix to get pure base64
+        const base64 = dataUrl.split(",")[1];
+        resolve({ base64, mimeType: outputMime });
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 // ── Main Component ─────────────────────────────────────────────────────────
 function HandwrittenPage() {
@@ -226,47 +275,99 @@ function HandwrittenPage() {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  // Run Tesseract OCR (preserving existing dynamic import workflow)
+  // Run OCR — try Gemini Vision first, fall back to Tesseract.js
   const extractText = async (id: string) => {
     const item = uploads.find((u) => u.id === id);
     if (!item || item.file.size === 0) return;
 
     setBusy(true);
     const startTime = Date.now();
-    updateUploadItem(id, { status: "reading", progress: 0, text: "" });
+    updateUploadItem(id, { status: "reading", progress: 0, text: "", ocrEngine: undefined });
+
+    // Simulated progress for Gemini (it doesn't stream progress like Tesseract)
+    let simProgress = 0;
+    let progressTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
+      simProgress = Math.min(simProgress + Math.random() * 8 + 2, 90);
+      updateUploadItem(id, { progress: Math.round(simProgress) });
+    }, 400);
+
+    const clearProgress = () => {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+    };
 
     try {
-      const { recognize } = await import("tesseract.js");
-      const { data } = await recognize(item.file, "eng", {
-        logger: (m: { status: string; progress: number }) => {
-          if (m.status === "recognizing text") {
-            const pct = Math.min(Math.round(m.progress * 100), 99);
-            updateUploadItem(id, { progress: pct });
-          }
-        },
-      });
+      // ── 1. Gemini Vision (primary) ──────────────────────────────────────
+      const { base64, mimeType } = await fileToBase64(item.file);
+      const result = await performOcr({ data: { imageBase64: base64, mimeType } });
 
-      const cleaned = (data.text || "").trim();
-      const confidence = data.confidence !== undefined ? Math.round(data.confidence) : null;
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      clearProgress();
 
-      if (!cleaned) {
-        toast.error("Couldn't extract text. Check the image clarity.");
-        updateUploadItem(id, { status: "error", error: "No text found" });
-      } else {
-        updateUploadItem(id, {
-          status: "done",
-          text: cleaned,
-          confidence,
-          progress: 100,
-        });
-        setProcessingTimes((prev) => ({ ...prev, [id]: `${duration}s` }));
-        toast.success("Text extracted successfully!");
+      if (result.error || !result.text) {
+        throw new Error(result.error || "Gemini returned no text");
       }
-    } catch (err: any) {
-      toast.error("OCR process failed");
-      updateUploadItem(id, { status: "error", error: err?.message || "OCR failed" });
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      updateUploadItem(id, {
+        status: "done",
+        text: result.text,
+        confidence: result.confidence,
+        progress: 100,
+        ocrEngine: "Gemini Vision",
+      });
+      setProcessingTimes((prev) => ({ ...prev, [id]: `${duration}s` }));
+      toast.success("Text extracted with Gemini Vision!");
+    } catch (geminiErr: unknown) {
+      // ── 2. Tesseract.js fallback ────────────────────────────────────────
+      clearProgress();
+      const geminiMsg = geminiErr instanceof Error ? geminiErr.message : "Unknown";
+      console.warn("Gemini OCR failed, falling back to Tesseract.js:", geminiMsg);
+
+      try {
+        updateUploadItem(id, { progress: 10 });
+
+        const { recognize } = await import("tesseract.js");
+        const { data } = await recognize(item.file, "eng", {
+          logger: (m: { status: string; progress: number }) => {
+            if (m.status === "recognizing text") {
+              const pct = Math.min(Math.round(m.progress * 100), 99);
+              updateUploadItem(id, { progress: pct });
+            }
+          },
+        });
+
+        const cleaned = (data.text || "").trim();
+        const confidence =
+          data.confidence !== undefined ? Math.round(data.confidence) : null;
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+        if (!cleaned) {
+          toast.error("Couldn't extract text. Check the image clarity.");
+          updateUploadItem(id, {
+            status: "error",
+            error: "No text found",
+            ocrEngine: "Tesseract.js (Fallback)",
+          });
+        } else {
+          updateUploadItem(id, {
+            status: "done",
+            text: cleaned,
+            confidence,
+            progress: 100,
+            ocrEngine: "Tesseract.js (Fallback)",
+          });
+          setProcessingTimes((prev) => ({ ...prev, [id]: `${duration}s` }));
+          toast.success("Text extracted with Tesseract.js (fallback)");
+        }
+      } catch (tessErr: unknown) {
+        const tessMsg = tessErr instanceof Error ? tessErr.message : "OCR failed";
+        toast.error("OCR process failed");
+        updateUploadItem(id, { status: "error", error: tessMsg });
+      }
     } finally {
+      clearProgress();
       setBusy(false);
     }
   };
@@ -1152,7 +1253,7 @@ function HandwrittenPage() {
                     </div>
                     <div className="space-y-0.5">
                       <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">OCR Engine</span>
-                      <p className="text-xs font-semibold text-foreground">Tesseract.js</p>
+                      <p className="text-xs font-semibold text-foreground">{activeItem.ocrEngine || "Pending"}</p>
                     </div>
                     <div className="space-y-0.5">
                       <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Char Count</span>
