@@ -152,6 +152,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -408,5 +412,29 @@
   .animate-cursor {
     border-right: 2px solid var(--primary);
     animation: blink 0.75s step-end infinite;
+  }
+
+  /* Subtle particle drift animation */
+  @keyframes particle-drift {
+    0%, 100% { transform: translateY(0) translateX(0); opacity: 0.25; }
+    50% { transform: translateY(-30px) translateX(12px); opacity: 0.5; }
+  }
+  .animate-particle-1 { animation: particle-drift 15s infinite ease-in-out; }
+  .animate-particle-2 { animation: particle-drift 20s infinite ease-in-out reverse; }
+  .animate-particle-3 { animation: particle-drift 18s infinite ease-in-out 5s; }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-aurora,
+    .animate-blob-1,
+    .animate-blob-2,
+    .animate-particle-1,
+    .animate-particle-2,
+    .animate-particle-3,
+    .animate-float,
+    .animate-pulse-glow,
+    .animate-cursor {
+      animation: none !important;
+    }
   }
 }
