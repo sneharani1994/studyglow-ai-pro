@@ -100,6 +100,34 @@ function QuizzesPage() {
   // Question container ref for smooth transitions/scrolling
   const questionContainerRef = useRef<HTMLDivElement>(null);
 
+  // Individual Question state
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  // Reset or load question state when question index, active quiz, or answers change
+  useEffect(() => {
+    if (!active) {
+      setSelectedOption(null);
+      setSubmitted(false);
+      setShowExplanation(false);
+      return;
+    }
+    const currentQuestionId = active.questions[currentIdx]?.id;
+    if (!currentQuestionId) return;
+
+    const savedAns = answers[currentQuestionId];
+    if (result !== null || savedAns !== undefined) {
+      setSelectedOption(savedAns ?? null);
+      setSubmitted(true);
+      setShowExplanation(true);
+    } else {
+      setSelectedOption(null);
+      setSubmitted(false);
+      setShowExplanation(false);
+    }
+  }, [currentIdx, active, result, answers]);
+
   // 1. Initial Data Loading & State Restoring
   useEffect(() => {
     // Load documents
@@ -294,8 +322,17 @@ function QuizzesPage() {
 
   // Answer Option Selection
   const handleAnswerSelect = (optionIdx: number) => {
-    if (result || !currentQuestion) return; // Read-only if quiz submitted
-    const newAnswers = { ...answers, [currentQuestion.id]: optionIdx };
+    if (result || submitted || !currentQuestion) return; // Read-only if quiz submitted
+    setSelectedOption(optionIdx);
+  };
+
+  // Submit Individual Question Answer
+  const handleQuestionSubmit = () => {
+    if (selectedOption === null || !currentQuestion || submitted || result) return;
+    setSubmitted(true);
+    setShowExplanation(true);
+
+    const newAnswers = { ...answers, [currentQuestion.id]: selectedOption };
     setAnswers(newAnswers);
 
     // Auto-advance mechanism
@@ -305,7 +342,7 @@ function QuizzesPage() {
         if (questionContainerRef.current) {
           questionContainerRef.current.scrollIntoView({ behavior: "smooth" });
         }
-      }, 1000);
+      }, 1500);
     }
   };
 
@@ -572,52 +609,76 @@ function QuizzesPage() {
                   </h3>
 
                   {/* MCQ Options */}
-                  <RadioGroup
-                    value={answers[currentQuestion.id]?.toString()}
-                    onValueChange={(val) => handleAnswerSelect(Number(val))}
-                    className="grid gap-3"
-                  >
-                    {currentQuestion.options.map((opt, optionIdx) => {
-                      const isSelected = answers[currentQuestion.id] === optionIdx;
-                      const isCorrectAnswer = optionIdx === currentQuestion.correct_option_index;
-                      const hasSubmitted = !!result;
-
-                      return (
-                        <Label
-                          key={optionIdx}
-                          htmlFor={`opt-${currentIdx}-${optionIdx}`}
-                          className={cn(
-                            "flex items-center gap-3 p-4 rounded-xl border border-border/40 cursor-pointer transition-all duration-200 select-none hover:bg-muted/30",
-                            isSelected && "border-primary bg-primary/5 font-medium scale-[1.01] shadow-sm",
-                            hasSubmitted && isCorrectAnswer && "border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium",
-                            hasSubmitted && isSelected && !isCorrectAnswer && "border-destructive bg-destructive/10 hover:bg-destructive/10 text-destructive font-medium"
-                          )}
+                  {(() => {
+                    const hasSubmitted = submitted || !!result;
+                    return (
+                      <>
+                        <RadioGroup
+                          value={selectedOption !== null ? selectedOption.toString() : ""}
+                          onValueChange={(val) => handleAnswerSelect(Number(val))}
+                          className="grid gap-3"
                         >
-                          <RadioGroupItem
-                            id={`opt-${currentIdx}-${optionIdx}`}
-                            value={optionIdx.toString()}
-                            disabled={hasSubmitted}
-                            className="shrink-0"
-                          />
-                          <span className="text-sm font-normal text-foreground leading-relaxed">
-                            {opt}
-                          </span>
-                          {hasSubmitted && isCorrectAnswer && (
-                            <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500 shrink-0" />
-                          )}
-                          {hasSubmitted && isSelected && !isCorrectAnswer && (
-                            <XCircle className="h-4 w-4 ml-auto text-destructive shrink-0" />
-                          )}
-                        </Label>
-                      );
-                    })}
-                  </RadioGroup>
+                          {currentQuestion.options.map((opt, optionIdx) => {
+                            const isSelected = selectedOption === optionIdx;
+                            const isCorrectAnswer = optionIdx === currentQuestion.correct_option_index;
+
+                            return (
+                              <Label
+                                key={optionIdx}
+                                htmlFor={`opt-${currentIdx}-${optionIdx}`}
+                                className={cn(
+                                  "flex items-center gap-3 p-4 rounded-xl border transition-all duration-200 select-none",
+                                  // 1. Default (Not submitted, not selected)
+                                  !hasSubmitted && !isSelected && "border-border/40 cursor-pointer hover:bg-muted/30",
+                                  // 2. Selected (Not submitted, selected)
+                                  !hasSubmitted && isSelected && "border-primary bg-primary/5 font-medium scale-[1.01] shadow-sm cursor-pointer",
+                                  // 3. Correct (after submit only)
+                                  hasSubmitted && isCorrectAnswer && "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium cursor-not-allowed",
+                                  // 4. Incorrect (after submit only, selected incorrect)
+                                  hasSubmitted && isSelected && !isCorrectAnswer && "border-destructive bg-destructive/10 text-destructive font-medium cursor-not-allowed",
+                                  // 5. Unselected incorrect (after submit only, faded)
+                                  hasSubmitted && !isSelected && !isCorrectAnswer && "opacity-60 border-border/30 cursor-not-allowed"
+                                )}
+                              >
+                                <RadioGroupItem
+                                  id={`opt-${currentIdx}-${optionIdx}`}
+                                  value={optionIdx.toString()}
+                                  disabled={hasSubmitted}
+                                  className="shrink-0"
+                                />
+                                <span className="text-sm font-normal text-foreground leading-relaxed">
+                                  {opt}
+                                </span>
+                                {hasSubmitted && isCorrectAnswer && (
+                                  <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500 shrink-0" />
+                                )}
+                                {hasSubmitted && isSelected && !isCorrectAnswer && (
+                                  <XCircle className="h-4 w-4 ml-auto text-destructive shrink-0" />
+                                )}
+                              </Label>
+                            );
+                          })}
+                        </RadioGroup>
+
+                        {/* Submit Answer Button */}
+                        {!hasSubmitted && (
+                          <Button
+                            onClick={handleQuestionSubmit}
+                            disabled={selectedOption === null}
+                            className="mt-6 w-full gradient-primary-bg text-white border-0 shadow-md font-medium text-sm h-10 hover:opacity-95 cursor-pointer"
+                          >
+                            Submit Answer
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Immediate Explanation Feedback (Only if choice is clicked or result screen is open) */}
-                  {(result || answers[currentQuestion.id] !== undefined) && (
+                  {showExplanation && (
                     <div className="mt-6 border-t border-border/40 pt-5 space-y-3 animate-card-enter">
                       <div className="flex items-center gap-2">
-                        {answers[currentQuestion.id] === currentQuestion.correct_option_index ? (
+                        {selectedOption === currentQuestion.correct_option_index ? (
                           <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/5">
                             ✓ Correct Answer
                           </Badge>
@@ -680,8 +741,8 @@ function QuizzesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentIdx((i) => Math.min(active.questions.length - 1, i + 1))}
-                  disabled={isLastQuestion}
-                  className="h-9 px-3 text-xs"
+                  disabled={isLastQuestion || (!submitted && !result)}
+                  className="h-9 px-3 text-xs cursor-pointer"
                 >
                   Next <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>

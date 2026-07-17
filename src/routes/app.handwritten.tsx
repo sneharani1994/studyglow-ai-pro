@@ -9,31 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  ScanLine,
-  Upload,
-  X,
-  Copy,
-  Download,
-  Loader2,
-  Sparkles,
-  Save,
-  History,
-  Trash2,
-  FileText,
-  Check,
-  RefreshCw,
-  Plus,
-  ChevronRight,
-  BrainCircuit,
-  Layers,
-  BookOpen,
-  Search,
-  Clock,
+  ScanLine, Upload, X, Copy, Download, Loader2, Sparkles, Save, History, Trash2, FileText,
+  Check, RefreshCw, ChevronRight, BrainCircuit, Layers, BookOpen, Search, Clock, ZoomIn, ZoomOut, RotateCw,
+  Maximize2, Minimize2, CheckCircle2, AlertTriangle, FileCode, Info, HelpCircle, Columns
 } from "lucide-react";
 import { aiService } from "@/lib/api";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/app/handwritten")({
   component: HandwrittenPage,
@@ -84,6 +68,16 @@ function HandwrittenPage() {
   const [aiActionBusy, setAiActionBusy] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  // Image manipulation states
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Result display states
+  const [viewMode, setViewMode] = useState<"raw" | "formatted">("formatted");
+  const [isMonospace, setIsMonospace] = useState(false);
+  const [processingTimes, setProcessingTimes] = useState<Record<string, string>>({});
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load history on mount & restore latest note automatically
@@ -93,14 +87,12 @@ function HandwrittenPage() {
       if (stored) {
         const parsed: SavedNote[] = JSON.parse(stored);
         setHistory(parsed);
-        // Automatically restore the latest note on refresh
         if (parsed.length > 0) {
           const latest = parsed[0];
-          // Create a mock upload item from latest saved note so it shows in workspace
           const mockItem: UploadItem = {
             id: latest.id,
             file: new File([], latest.title),
-            preview: "", // no preview image available for historical notes
+            preview: "", 
             text: latest.text,
             notes: latest.notes,
             progress: 100,
@@ -115,6 +107,31 @@ function HandwrittenPage() {
       /* ignore */
     }
   }, []);
+
+  // Keyboard Shortcuts accessibility (Ctrl+C, Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          saveNote();
+        }
+        return;
+      }
+      if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+        if (activeItem && activeItem.text && window.getSelection()?.toString() === "") {
+          e.preventDefault();
+          copyText();
+        }
+      }
+      if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        saveNote();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeId, uploads, history]);
 
   // Save history helper
   const saveToHistoryList = (newList: SavedNote[]) => {
@@ -150,7 +167,6 @@ function HandwrittenPage() {
         continue;
       }
 
-      // Check for duplicates
       if (uploads.some((u) => u.file.name === f.name && u.file.size === f.size)) {
         continue;
       }
@@ -211,6 +227,7 @@ function HandwrittenPage() {
     if (!item || item.file.size === 0) return;
 
     setBusy(true);
+    const startTime = Date.now();
     updateUploadItem(id, { status: "reading", progress: 0, text: "" });
 
     try {
@@ -218,7 +235,7 @@ function HandwrittenPage() {
       const { data } = await recognize(item.file, "eng", {
         logger: (m: { status: string; progress: number }) => {
           if (m.status === "recognizing text") {
-            const pct = Math.round(m.progress * 100);
+            const pct = Math.min(Math.round(m.progress * 100), 99);
             updateUploadItem(id, { progress: pct });
           }
         },
@@ -226,6 +243,7 @@ function HandwrittenPage() {
 
       const cleaned = (data.text || "").trim();
       const confidence = data.confidence !== undefined ? Math.round(data.confidence) : null;
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
       if (!cleaned) {
         toast.error("Couldn't extract text. Check the image clarity.");
@@ -237,6 +255,7 @@ function HandwrittenPage() {
           confidence,
           progress: 100,
         });
+        setProcessingTimes((prev) => ({ ...prev, [id]: `${duration}s` }));
         toast.success("Text extracted successfully!");
       }
     } catch (err: any) {
@@ -266,7 +285,7 @@ function HandwrittenPage() {
   const saveNote = () => {
     if (!activeItem || !activeItem.text.trim()) return;
 
-    const noteTitle = activeItem.file.name !== "mock" ? activeItem.file.name : "Extracted Notes";
+    const noteTitle = activeItem.file.name !== "mock" && activeItem.file.name ? activeItem.file.name : "Extracted Notes";
 
     const newNote: SavedNote = {
       id: activeItem.id,
@@ -277,7 +296,6 @@ function HandwrittenPage() {
       confidence: activeItem.confidence,
     };
 
-    // Filter out duplicates
     const filteredHistory = history.filter(
       (h) => h.id !== activeItem.id && h.title !== noteTitle
     );
@@ -289,7 +307,6 @@ function HandwrittenPage() {
 
   // Restore note from history
   const restoreNote = (n: SavedNote) => {
-    // Check if it already exists in workspace
     const existing = uploads.find((u) => u.id === n.id);
     if (existing) {
       setActiveId(n.id);
@@ -299,7 +316,7 @@ function HandwrittenPage() {
     const restoredItem: UploadItem = {
       id: n.id,
       file: new File([], n.title),
-      preview: "", // no preview image available
+      preview: "", 
       text: n.text,
       notes: n.notes,
       progress: 100,
@@ -497,21 +514,90 @@ function HandwrittenPage() {
     );
   }, [history, searchQuery]);
 
+  // Quality badge calculations based on confidence
+  const getQualityBadge = (confidence: number | null) => {
+    if (confidence === null) {
+      return { label: "Unknown Quality", color: "text-muted-foreground bg-muted/40 border-border/40" };
+    }
+    if (confidence >= 90) {
+      return { label: "Excellent Quality", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    }
+    if (confidence >= 75) {
+      return { label: "Good Quality", color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20" };
+    }
+    if (confidence >= 50) {
+      return { label: "Fair Quality", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20" };
+    }
+    return { label: "Poor Quality", color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20" };
+  };
+
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  };
+
+  const wordCount = (text: string) => {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
+  // Suspected OCR Typo highlights
+  const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    const paragraphs = text.split("\n\n").filter((p) => p.trim() !== "");
+    return paragraphs.map((para, pIdx) => {
+      const isHeading = para.length < 60 && (para === para.toUpperCase() || para.trim().endsWith(":"));
+      const words = para.split(/(\s+)/);
+      const elements = words.map((word, wIdx) => {
+        const isSuspicious = /^[a-zA-Z]+[0-9]+[a-zA-Z]*|[0-9]+[a-zA-Z]+[0-9]*$/.test(word) || 
+                             (word.length > 3 && !/^[a-zA-Z]+[.,!?;:]*$/.test(word) && /[^a-zA-Z0-9.,!?;:]/.test(word));
+        
+        if (isSuspicious && !word.startsWith("http")) {
+          return (
+            <span
+              key={wIdx}
+              className="bg-amber-200/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-b border-dashed border-amber-500 cursor-help px-0.5 rounded"
+              title="This word may be incorrectly recognized."
+            >
+              {word}
+            </span>
+          );
+        }
+        return <span key={wIdx}>{word}</span>;
+      });
+
+      if (isHeading) {
+        return (
+          <h3 key={pIdx} className="text-base font-bold text-foreground mt-4 mb-2">
+            {elements}
+          </h3>
+        );
+      }
+      return (
+        <p key={pIdx} className="text-sm text-muted-foreground leading-relaxed mb-3">
+          {elements}
+        </p>
+      );
+    });
+  };
+
   return (
-    <div className="relative">
+    <div className="relative min-h-[calc(100vh-8rem)]">
       <PageHeader
-        title="Handwritten Notes"
-        description="Convert handwritten whiteboard snaps or notebook images into structured, study-ready notes."
+        title="Document Scanner & OCR"
+        description="Extract study text from whiteboard photos, lecture slides, notes sheets, and handwriting scans."
       />
 
-      {/* ═══════════ TWO-COLUMN RESPONSIVE LAYOUT ═══════════ */}
-      <div className="grid lg:grid-cols-[380px_1fr] gap-6 items-start animate-fade-in-premium">
-        
-        {/* LEFT COLUMN: Uploads grid, preview & OCR trigger */}
-        <div className="space-y-6">
+      {!activeItem ? (
+        /* ═══════════ EMPTY STATE PANEL ═══════════ */
+        <div className="max-w-xl mx-auto py-16 px-4">
           <Card
             className={cn(
-              "p-6 text-center border-2 border-dashed transition-all glass",
+              "p-10 text-center border-2 border-dashed transition-all glass bg-card/25 shadow-card hover:bg-card/40 hover:border-primary/50",
               dragOver ? "border-primary bg-primary/5 shadow-glow" : "border-border/60"
             )}
             onDragOver={(e) => {
@@ -521,16 +607,16 @@ function HandwrittenPage() {
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
-            <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center text-primary mx-auto mb-3">
-              <ScanLine className="h-5 w-5" />
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 grid place-items-center text-primary mx-auto mb-4 animate-float">
+              <ScanLine className="h-6 w-6" />
             </div>
-            <h3 className="font-semibold text-sm text-foreground">
-              Drop handwritten images here
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              Upload handwritten notes or printed documents
             </h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-              Supports PNG, JPG, or JPEG formats. Multi-file uploads supported.
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+              Drag & drop whiteboard captures, note pages, scans, or receipts here. Supports PNG, JPG, or JPEG images.
             </p>
-            <div className="mt-4">
+            <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
               <input
                 ref={inputRef}
                 type="file"
@@ -541,412 +627,517 @@ function HandwrittenPage() {
               />
               <Button
                 onClick={() => inputRef.current?.click()}
-                size="sm"
-                className="text-xs bg-primary text-white"
+                className="text-xs font-semibold bg-primary hover:bg-primary/90 text-white cursor-pointer"
+                aria-label="Upload Handwritten Image Files"
               >
-                <Upload className="h-3.5 w-3.5 mr-2" />
-                Select Images
+                <Upload className="h-4 w-4 mr-2" /> Select Notes Images
               </Button>
             </div>
           </Card>
-
-          {/* ACTIVE UPLOADS LIST GALLERY */}
-          {uploads.length > 0 && (
-            <Card className="p-4 glass border-border/40 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Uploaded Gallery ({uploads.length})
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={removeAllUploads}
-                  className="h-7 text-xs text-destructive hover:bg-destructive/10"
-                >
-                  Clear all
-                </Button>
+          
+          {history.length > 0 && (
+            <div className="mt-8 text-left">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Restore from History Logs</p>
+              <div className="grid gap-2">
+                {history.slice(0, 3).map((h) => (
+                  <button
+                    key={h.id}
+                    onClick={() => restoreNote(h)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-border/40 hover:bg-muted/40 text-xs transition-all text-left bg-card/25 cursor-pointer"
+                  >
+                    <div className="truncate pr-4">
+                      <p className="font-semibold truncate">{h.title}</p>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5">Confidence: {h.confidence !== null ? `${h.confidence}%` : "—"}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
               </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ═══════════ DETAILED SPLIT LAYOUT ═══════════ */
+        <div className="space-y-6">
+          {/* Main Top Header Controls & Success/Loader */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 glass rounded-xl border border-border/40">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-8 w-8 rounded-lg gradient-primary-bg flex items-center justify-center text-white shrink-0">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-sm truncate">{activeItem.file.name || "Historical Restored Document"}</h4>
+                <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                  Type: {activeItem.file.type || "Unknown File Type"} • Size: {activeItem.file.size ? formatBytes(activeItem.file.size) : "—"}
+                </p>
+              </div>
+            </div>
 
-              <div className="grid grid-cols-4 gap-2">
-                {uploads.map((u) => {
-                  const isActive = activeId === u.id;
-                  const isMock = u.preview === "";
-
-                  return (
-                    <div
+            <div className="flex items-center gap-2">
+              {uploads.length > 1 && (
+                <div className="flex gap-1 border-r border-border/40 pr-3 mr-1">
+                  {uploads.map((u) => (
+                    <button
                       key={u.id}
-                      onClick={() => setActiveId(u.id)}
+                      onClick={() => {
+                        setZoom(1);
+                        setRotation(0);
+                        setActiveId(u.id);
+                      }}
                       className={cn(
-                        "relative aspect-square rounded-lg overflow-hidden border cursor-pointer group transition-all",
-                        isActive
-                          ? "border-primary ring-2 ring-primary/20 scale-95"
-                          : "border-border/40 hover:border-muted-foreground/60"
+                        "h-6 w-6 rounded-md text-[10px] font-bold border transition-all cursor-pointer",
+                        u.id === activeId ? "border-primary bg-primary/10 text-primary" : "border-border/30 hover:bg-muted/40"
                       )}
                     >
-                      {isMock ? (
-                        <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                      ) : (
-                        <img
-                          src={u.preview}
-                          alt="thumbnail"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      {uploads.indexOf(u) + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={removeAllUploads}
+                className="h-8 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+              >
+                Reset Scanner
+              </Button>
+            </div>
+          </div>
 
-                      {/* Status indicator overlay */}
-                      {u.status === "reading" && (
-                        <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        </div>
-                      )}
-                      {u.status === "done" && (
-                        <div className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                          <Check className="h-2 w-2" />
-                        </div>
-                      )}
-                      {u.status === "error" && (
-                        <div className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-red-500 flex items-center justify-center text-white">
-                          <X className="h-2 w-2" />
-                        </div>
-                      )}
-
-                      {/* Delete item hover */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeUpload(u.id);
-                        }}
-                        className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+          {/* Core Panel Grid Split Layout */}
+          <div className="grid lg:grid-cols-2 gap-6 items-stretch">
+            
+            {/* LEFT PANEL: Original Uploaded Image Preview */}
+            <Card className="glass border-border/40 p-5 flex flex-col justify-between relative shadow-sm h-full">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Original Source File</span>
+                  {activeItem.preview && (
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setZoom((z) => Math.min(z + 0.25, 2))}
+                        className="h-7 w-7 rounded-lg"
+                        title="Zoom In"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        <ZoomIn className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setZoom((z) => Math.max(z - 0.25, 0.75))}
+                        className="h-7 w-7 rounded-lg"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setRotation((r) => (r + 90) % 360)}
+                        className="h-7 w-7 rounded-lg"
+                        title="Rotate 90°"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="h-7 w-7 rounded-lg text-muted-foreground"
+                        title="Fullscreen Preview Toggle"
+                      >
+                        {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                      </Button>
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
+                  )}
+                </div>
 
-          {/* ACTIVE PREVIEW CARD */}
-          {activeItem && activeItem.preview && (
-            <Card className="p-4 glass border-border/40 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold truncate text-muted-foreground max-w-[200px]">
-                  {activeItem.file.name}
-                </span>
-                <Badge
-                  variant="outline"
+                <div 
                   className={cn(
-                    "text-[10px]",
-                    activeItem.status === "done"
-                      ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-                      : activeItem.status === "reading"
-                        ? "text-primary bg-primary/10 border-primary/20"
-                        : activeItem.status === "error"
-                          ? "text-red-500 bg-red-500/10 border-red-500/20"
-                          : "text-muted-foreground"
+                    "bg-muted/30 border border-border/40 rounded-xl relative overflow-hidden flex items-center justify-center transition-all",
+                    isFullscreen ? "fixed inset-4 z-50 bg-background/95 p-8 border-2 border-border/80 shadow-2xl" : "aspect-[4/3]"
                   )}
                 >
-                  {activeItem.status === "done"
-                    ? "OCR Success"
-                    : activeItem.status === "reading"
-                      ? `Extracting ${activeItem.progress}%`
-                      : activeItem.status === "error"
-                        ? "OCR Fail"
-                        : "Ready"}
-                </Badge>
+                  {/* Floating Exit Fullscreen Button */}
+                  {isFullscreen && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsFullscreen(false)}
+                      className="absolute top-4 right-4 h-9 w-9 rounded-full bg-background border shadow-md z-50 cursor-pointer"
+                    >
+                      <X className="h-4.5 w-4.5" />
+                    </Button>
+                  )}
+
+                  {activeItem.preview ? (
+                    <div 
+                      className="transition-transform duration-300 w-full h-full flex items-center justify-center"
+                      style={{
+                        transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                      }}
+                    >
+                      <img
+                        src={activeItem.preview}
+                        alt="Scanned original preview"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center p-6 text-muted-foreground text-xs italic flex flex-col gap-2 items-center">
+                      <Info className="h-5 w-5 text-muted-foreground/60" />
+                      Original image source unavailable for restored history items.
+                    </div>
+                  )}
+
+                  {/* Animated Scanner Laser Sweep during OCR running */}
+                  {activeItem.status === "reading" && (
+                    <motion.div
+                      className="absolute left-0 right-0 h-1 bg-primary/80 shadow-glow"
+                      animate={{ top: ["0%", "100%", "0%"] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                    />
+                  )}
+                </div>
               </div>
 
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border/40 relative">
-                <img
-                  src={activeItem.preview}
-                  alt="selected preview"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
-              {/* Progress Bar & Confidence Indicators */}
+              {/* Loader/Progress Steps indicator inside the preview */}
               {activeItem.status === "reading" && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
-                    <span>Analyzing handwriting layers...</span>
-                    <span>{activeItem.progress}%</span>
+                <div className="mt-4 p-4 border border-primary/20 bg-primary/5 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-primary flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Recognizing Text Layers...
+                    </span>
+                    <span className="text-primary">{activeItem.progress}%</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-primary/15 overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${activeItem.progress}%` }}
                     />
                   </div>
-                </div>
-              )}
-
-              {activeItem.status === "done" && activeItem.confidence !== null && (
-                <div className="flex justify-between items-center text-xs p-2.5 rounded-lg bg-background/50 border border-border/20">
-                  <span className="text-muted-foreground">OCR Confidence Score:</span>
-                  <span className="font-bold text-emerald-500">
-                    {activeItem.confidence}%
-                  </span>
-                </div>
-              )}
-
-              {activeItem.status === "error" && (
-                <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-500">
-                  Failed: {activeItem.error || "Text unreadable"}
-                </div>
-              )}
-
-              {/* Action Trigger Button */}
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => extractText(activeItem.id)}
-                  disabled={busy}
-                  className="flex-1 text-xs text-white"
-                >
-                  {activeItem.status === "reading" ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      Extracting...
-                    </>
-                  ) : activeItem.status === "done" ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Re-Extract Text
-                    </>
-                  ) : (
-                    <>
-                      <ScanLine className="h-3.5 w-3.5 mr-1.5" />
-                      Extract Text
-                    </>
-                  )}
-                </Button>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: Extracted Workspace editor, AI Notes, and History */}
-        <div className="min-w-0 space-y-6">
-          {!activeItem ? (
-            /* EMPTY WORKSPACE STATE */
-            <Card className="p-12 text-center border-border/40 glass">
-              <div className="flex justify-center mb-3">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <ScanLine className="h-6 w-6" />
-                </div>
-              </div>
-              <h4 className="text-base font-bold mb-2 text-foreground">
-                Workspace Empty
-              </h4>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Drop handwritten images on the left to start OCR transcription. Past notes can be restored below.
-              </p>
-            </Card>
-          ) : (
-            /* ACTIVE WORKSPACE EDITOR */
-            <div className="space-y-6">
-              
-              {/* STICKY WORKSPACE ACTION TOOLBAR */}
-              <div className="sticky top-0 z-10 glass border-border/40 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-background/80 backdrop-blur-md shadow-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
-                  <span className="font-semibold text-sm truncate">
-                    {activeItem.file.name !== "mock" ? activeItem.file.name : "Restored OCR Workspace"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyText}
-                    disabled={!activeItem.text}
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {copied ? (
-                      <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Copy Text
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={downloadTxt}
-                    disabled={!activeItem.text}
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1" />
-                    TXT
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={downloadMarkdown}
-                    disabled={!activeItem.text}
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1" />
-                    Markdown
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={exportPdf}
-                    disabled={!activeItem.text}
-                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <FileText className="h-3.5 w-3.5 mr-1" />
-                    PDF
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={saveNote}
-                    disabled={!activeItem.text}
-                    className="h-8 px-2.5 text-xs text-primary hover:bg-primary/10 font-bold"
-                  >
-                    <Save className="h-3.5 w-3.5 mr-1" />
-                    Save Note
-                  </Button>
-                </div>
-              </div>
-
-              {/* EDITABLE TEXT AREA PANEL */}
-              <Card className="p-5 glass border-border/40 space-y-4">
-                <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                  <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                    <ScanLine className="h-4 w-4 text-primary" />
-                    Extracted Text Editor
-                  </h3>
-                  <span className="text-[10px] text-muted-foreground">
-                    Editable OCR transcription
-                  </span>
-                </div>
-
-                {activeItem.status === "reading" ? (
-                  <div className="space-y-2 py-4">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-4 w-4/5" />
+                  {/* Processing Steps Timeline list */}
+                  <div className="grid grid-cols-5 text-[9px] font-mono text-muted-foreground uppercase text-center pt-1 border-t border-border/20">
+                    <span className={cn(activeItem.progress >= 0 && "text-primary font-bold")}>Uploading</span>
+                    <span className={cn(activeItem.progress >= 25 && "text-primary font-bold")}>Detecting</span>
+                    <span className={cn(activeItem.progress >= 50 && "text-primary font-bold")}>Reading</span>
+                    <span className={cn(activeItem.progress >= 85 && "text-primary font-bold")}>Formatting</span>
+                    <span className={cn(activeItem.progress >= 99 && "text-primary font-bold")}>Done</span>
                   </div>
-                ) : activeItem.text ? (
-                  <Textarea
-                    rows={12}
-                    value={activeItem.text}
-                    onChange={(e) => updateUploadItem(activeItem.id, { text: e.target.value })}
-                    className="text-sm bg-background/40 font-mono leading-relaxed"
-                    placeholder="Extracted text will show here. Feel free to edit or correct spelling gaps..."
-                  />
-                ) : (
-                  <div className="text-center py-10 text-xs text-muted-foreground italic">
-                    No text extracted yet. Click "Extract Text" on the left preview card.
+                </div>
+              )}
+
+              {/* Fail Display */}
+              {activeItem.status === "error" && (
+                <div className="mt-4 p-3.5 rounded-xl border border-red-500/20 bg-red-500/5 text-xs text-red-500 flex gap-2 items-start text-left">
+                  <AlertTriangle className="h-4.5 w-4.5 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Text Extraction Failed</span>
+                    <p className="mt-0.5 opacity-90">{activeItem.error || "The image context was unreadable. Check spelling gaps and try re-extracting."}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Success display */}
+              {activeItem.status === "done" && (
+                <div className="mt-4 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-600 dark:text-emerald-400 flex gap-2.5 items-start text-left">
+                  <CheckCircle2 className="h-4.5 w-4.5 shrink-0 mt-0.5 text-emerald-500" />
+                  <div>
+                    <span className="font-bold">Text extracted successfully</span>
+                    <p className="mt-0.5 opacity-95">Review the extracted text inside the right panel editor before generating notes or quizzes.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Primary action trigger buttons */}
+              {activeItem.file.size > 0 && activeItem.status !== "reading" && (
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={() => extractText(activeItem.id)}
+                    disabled={busy}
+                    className="flex-1 bg-primary hover:bg-primary/95 text-white text-xs font-semibold cursor-pointer"
+                  >
+                    {activeItem.status === "done" ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Re-Extract Image
+                      </>
+                    ) : (
+                      <>
+                        <ScanLine className="h-3.5 w-3.5 mr-1.5" /> Extract Text
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </Card>
+
+            {/* RIGHT PANEL: OCR Result Screen */}
+            <Card className="glass border-border/40 p-5 flex flex-col justify-between shadow-sm h-full">
+              <div className="space-y-4">
+                
+                {/* 1. OCR Status Card */}
+                {activeItem.status === "done" && (
+                  <div className="p-3.5 rounded-xl border border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Extraction State</span>
+                      <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" /> OCR Completed
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 sm:text-right">
+                      {activeItem.confidence !== null ? (
+                        <>
+                          <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Confidence Score</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs font-bold text-emerald-500">{activeItem.confidence}%</span>
+                            <div className="h-1.5 w-16 bg-muted border rounded-full overflow-hidden shrink-0">
+                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${activeItem.confidence}%` }} />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Confidence Score</span>
+                          <p className="text-xs font-semibold text-muted-foreground">Confidence unavailable</p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Quality indicator badge */}
+                    <div className="shrink-0 pt-1 sm:pt-0">
+                      <Badge variant="outline" className={cn("text-[10px] font-bold", getQualityBadge(activeItem.confidence).color)}>
+                        {getQualityBadge(activeItem.confidence).label}
+                      </Badge>
+                    </div>
                   </div>
                 )}
 
-                {/* AI integration downstreams */}
-                {activeItem.text && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/40">
+                {/* 2. Format / Viewer toggles */}
+                <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                  <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                    <ScanLine className="h-4 w-4 text-primary animate-pulse" /> OCR Results Workspace
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs">
+                    {/* View Modes */}
+                    <div className="flex border rounded-lg overflow-hidden bg-background/50">
+                      <button
+                        onClick={() => setViewMode("formatted")}
+                        className={cn("px-2.5 py-1 text-[10px] font-bold border-r cursor-pointer", viewMode === "formatted" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                      >
+                        Formatted Text
+                      </button>
+                      <button
+                        onClick={() => setViewMode("raw")}
+                        className={cn("px-2.5 py-1 text-[10px] font-bold cursor-pointer", viewMode === "raw" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted/40")}
+                      >
+                        Raw Editor
+                      </button>
+                    </div>
+                    {/* Monospace font toggle */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsMonospace(!isMonospace)}
+                      className={cn("h-7 w-7 rounded-lg", isMonospace ? "bg-primary/10 text-primary" : "text-muted-foreground")}
+                      title="Toggle Monospace Font"
+                    >
+                      <FileCode className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 3. Extracted text block / document previewer */}
+                <div className="min-h-[220px]">
+                  {activeItem.status === "reading" ? (
+                    <div className="space-y-3 py-4 text-left">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <Skeleton className="h-4 w-4/5" />
+                    </div>
+                  ) : activeItem.text ? (
+                    viewMode === "raw" ? (
+                      <div className="space-y-1.5 text-left">
+                        <Textarea
+                          rows={11}
+                          value={activeItem.text}
+                          onChange={(e) => updateUploadItem(activeItem.id, { text: e.target.value })}
+                          className={cn("text-xs leading-relaxed bg-background/40 font-medium resize-y", isMonospace ? "font-mono" : "font-sans")}
+                          placeholder="Extracted text. Feel free to edit to correct typos..."
+                        />
+                        <span className="text-[10px] text-muted-foreground block text-right">Editable text area</span>
+                      </div>
+                    ) : (
+                      <div className={cn("border rounded-xl p-4 bg-background/30 text-left max-h-[300px] overflow-y-auto custom-scrollbar whitespace-pre-wrap font-medium", isMonospace ? "font-mono" : "font-sans")}>
+                        {renderFormattedText(activeItem.text)}
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-12 text-xs text-muted-foreground italic bg-muted/10 border border-dashed rounded-xl">
+                      No text extracted. Click "Extract Text" on the left panel to begin.
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Side statistics/meta panel */}
+                {activeItem.status === "done" && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3.5 bg-muted/20 border rounded-xl text-left">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Language</span>
+                      <p className="text-xs font-semibold text-foreground">English (eng)</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">OCR Engine</span>
+                      <p className="text-xs font-semibold text-foreground">Tesseract.js</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Char Count</span>
+                      <p className="text-xs font-semibold text-foreground">{activeItem.text.length}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Word Count</span>
+                      <p className="text-xs font-semibold text-foreground">{wordCount(activeItem.text)}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Time Spent</span>
+                      <p className="text-xs font-semibold text-foreground">{processingTimes[activeItem.id] || "—"}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Total Pages</span>
+                      <p className="text-xs font-semibold text-foreground">1 Page</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sticky bottom actions / Export and Downstream options */}
+              {activeItem.text && (
+                <div className="mt-6 border-t border-border/40 pt-4 space-y-4">
+                  {/* Action row A: Downloader and Copier */}
+                  <div className="flex flex-wrap gap-1.5 justify-between items-center">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyText}
+                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Copy text to clipboard"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadTxt}
+                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Download raw plain text file"
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" /> TXT
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadMarkdown}
+                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Download structured markdown document"
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" /> MD
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportPdf}
+                        className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Export document layout as PDF"
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2.5 text-xs font-semibold text-primary hover:bg-primary/5 cursor-pointer"
+                        title="Try another OCR configuration for better handwriting recognition."
+                      >
+                        Improve OCR
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={saveNote}
+                        className="h-8 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-bold cursor-pointer"
+                        title="Save note to history"
+                      >
+                        <Save className="h-3.5 w-3.5 mr-1" /> Save
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Action row B: AI study workflows generation */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/30">
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={generateStudyNotes}
                       disabled={notesBusy}
-                      className="text-xs h-8 gap-1"
+                      className="text-xs h-8.5 gap-1.5 cursor-pointer"
+                      title="Analyze this text to structure standard AI study notes"
                     >
-                      {notesBusy ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-3.5 w-3.5" />
-                      )}
+                      {notesBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-primary" />}
                       Study Notes
                     </Button>
+                    
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => executeAiAction("quiz")}
                       disabled={!!aiActionBusy}
-                      className="text-xs h-8 gap-1"
+                      className="text-xs h-8.5 gap-1.5 cursor-pointer"
+                      title="Generate a 5-question multi-choice study quiz"
                     >
-                      {aiActionBusy === "quiz" ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <BrainCircuit className="h-3.5 w-3.5" />
-                      )}
+                      {aiActionBusy === "quiz" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BrainCircuit className="h-3.5 w-3.5" />}
                       Quiz
                     </Button>
+                    
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => executeAiAction("flashcards")}
                       disabled={!!aiActionBusy}
-                      className="text-xs h-8 gap-1"
+                      className="text-xs h-8.5 gap-1.5 cursor-pointer"
+                      title="Convert text items to spaced repetition flashcards"
                     >
-                      {aiActionBusy === "flashcards" ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Layers className="h-3.5 w-3.5" />
-                      )}
+                      {aiActionBusy === "flashcards" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
                       Flashcards
                     </Button>
+                    
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => executeAiAction("summarize")}
                       disabled={!!aiActionBusy}
-                      className="text-xs h-8 gap-1"
+                      className="text-xs h-8.5 gap-1.5 cursor-pointer"
+                      title="Generate an AI text summary"
                     >
-                      {aiActionBusy === "summarize" ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <BookOpen className="h-3.5 w-3.5" />
-                      )}
+                      {aiActionBusy === "summarize" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
                       Summarize
                     </Button>
                   </div>
-                )}
-              </Card>
-
-              {/* AI STUDY NOTES ANALYSIS DISPLAY */}
-              {activeItem.notes && (
-                <Card className="p-5 glass border-border/40 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 h-1 w-1/3 bg-primary" />
-                  <div className="flex justify-between items-center border-b border-border/40 pb-2 mb-3">
-                    <h4 className="font-semibold text-sm text-primary flex items-center gap-1.5">
-                      <Sparkles className="h-4.5 w-4.5 text-primary animate-pulse" />
-                      AI Analysis Study Notes
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyNotes}
-                      className="h-6 text-[10px] text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedNotes ? (
-                        <Check className="h-3 w-3 text-emerald-500 mr-1" />
-                      ) : (
-                        <Copy className="h-3 w-3 mr-1" />
-                      )}
-                      Copy Notes
-                    </Button>
-                  </div>
-                  <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground max-h-[300px] overflow-y-auto">
-                    {activeItem.notes}
-                  </div>
-                </Card>
+                </div>
               )}
-            </div>
-          )}
+            </Card>
+          </div>
 
           {/* ═══════════ SAVED OCR HISTORY PANEL ═══════════ */}
-          <Card className="p-5 glass border-border/40 space-y-4">
+          <Card className="p-5 glass border-border/40 space-y-4 max-w-4xl mx-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <History className="h-4.5 w-4.5 text-muted-foreground" />
@@ -957,28 +1148,26 @@ function HandwrittenPage() {
                   variant="ghost"
                   size="sm"
                   onClick={clearHistory}
-                  className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                  className="h-7 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
                 >
-                  Clear all
+                  Clear all history
                 </Button>
               )}
             </div>
 
-            {/* Filter History */}
             <div className="relative text-xs">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search history by keyword..."
+                placeholder="Search history log by keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-8 text-xs bg-background/50"
+                className="pl-8 h-8 text-xs bg-background/50 border-border/40"
               />
             </div>
 
-            {/* Saved list */}
             {filteredHistory.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">
-                No saved OCR history found matching criteria.
+                No saved OCR history found matching your search.
               </div>
             ) : (
               <ScrollArea className="h-44">
@@ -990,8 +1179,8 @@ function HandwrittenPage() {
                       className={cn(
                         "w-full text-left p-3 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between group",
                         activeId === h.id
-                          ? "bg-primary/10 border-primary/40 text-foreground"
-                          : "border-border/40 hover:bg-muted/40 text-muted-foreground"
+                          ? "bg-primary/10 border-primary/45 text-foreground"
+                          : "border-border/40 hover:bg-muted/40 text-muted-foreground bg-card/15"
                       )}
                     >
                       <div className="min-w-0 flex-1">
@@ -1019,7 +1208,7 @@ function HandwrittenPage() {
                             e.stopPropagation();
                             deleteNote(h.id);
                           }}
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -1031,9 +1220,37 @@ function HandwrittenPage() {
               </ScrollArea>
             )}
           </Card>
-        </div>
 
-      </div>
+          {/* AI generated study notes section */}
+          {activeItem.notes && (
+            <Card className="p-5 glass border-border/40 relative overflow-hidden group max-w-4xl mx-auto text-left">
+              <div className="absolute top-0 right-0 h-1 w-1/3 bg-primary animate-pulse-glow" />
+              <div className="flex justify-between items-center border-b border-border/40 pb-2 mb-3">
+                <h4 className="font-semibold text-sm text-primary flex items-center gap-1.5">
+                  <Sparkles className="h-4.5 w-4.5 text-primary animate-pulse" />
+                  AI Study Notes Breakdown
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={copyNotes}
+                  className="h-6 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  {copiedNotes ? (
+                    <Check className="h-3 w-3 text-emerald-500 mr-1" />
+                  ) : (
+                    <Copy className="h-3 w-3 mr-1" />
+                  )}
+                  Copy Notes
+                </Button>
+              </div>
+              <div className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {activeItem.notes}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
